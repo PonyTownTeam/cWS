@@ -63,35 +63,26 @@ class WebSocket {
         }
         this.registeredEvents[event] = listener;
     }
-    send(message, options, cb) {
+    send(message) {
         if (this.external) {
-            let opCode = typeof message === 'string' ? shared_1.OPCODE_TEXT : shared_1.OPCODE_BINARY;
-            if (options && options.binary === false) {
-                opCode = shared_1.OPCODE_TEXT;
-            }
-            if (options && options.binary === true) {
-                opCode = shared_1.OPCODE_BINARY;
-            }
-            shared_1.native[this.socketType].send(this.external, message, opCode, cb ? () => process.nextTick(cb) : null, options && options.compress);
-        }
-        else if (cb) {
-            cb(new Error('Socket not connected'));
+            const opCode = typeof message === 'string' ? shared_1.OPCODE_TEXT : shared_1.OPCODE_BINARY;
+            shared_1.native.server.send(this.external, message, opCode, null, false);
         }
     }
     ping(message) {
         if (this.external) {
-            shared_1.native[this.socketType].send(this.external, message, shared_1.OPCODE_PING);
+            shared_1.native.server.send(this.external, message, shared_1.OPCODE_PING);
         }
     }
     close(code = 1000, reason) {
         if (this.external) {
-            shared_1.native[this.socketType].close(this.external, code, reason);
+            shared_1.native.server.close(this.external, code, reason);
             this.external = null;
         }
     }
     terminate() {
         if (this.external) {
-            shared_1.native[this.socketType].terminate(this.external);
+            shared_1.native.server.terminate(this.external);
             this.external = null;
         }
     }

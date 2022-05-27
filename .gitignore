@@ -1,11 +1,2 @@
-.vscode/
 .vs/
-
-build/
-targets/
-coverage/
-excludes/
-node_modules/
-
-build_log.txt
-package-lock.json
+build/Release/

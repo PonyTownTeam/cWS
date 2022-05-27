@@ -27,6 +27,16 @@
   #include "headers/14/base_object-inl.h"
 #endif
 
+#if NODE_MAJOR_VERSION==15
+#include "headers/15/tls_wrap.h"
+#include "headers/15/base_object-inl.h"
+#endif
+
+#if NODE_MAJOR_VERSION==16
+#include "headers/16/tls_wrap.h"
+#include "headers/16/base_object-inl.h"
+#endif
+
 using BaseObject = node::BaseObject;
 using TLSWrap = node::TLSWrap;
 class TLSWrapSSLGetter : public node::TLSWrap {
