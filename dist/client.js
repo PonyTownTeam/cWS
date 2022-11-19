@@ -7,16 +7,11 @@ shared_1.setupNative(clientGroup, 'client');
 const server = shared_1.native.server;
 class WebSocket {
     constructor(_url, options = undefined) {
-        this.OPEN = WebSocket.OPEN;
-        this.CLOSED = WebSocket.OPEN;
-        this.registeredEvents = {
-            open: shared_1.noop,
-            ping: shared_1.noop,
-            pong: shared_1.noop,
-            error: shared_1.noop,
-            close: shared_1.noop,
-            message: shared_1.noop
-        };
+        this.open = shared_1.noop;
+        this.ping = shared_1.noop;
+        this.error = shared_1.noop;
+        this.close = shared_1.noop;
+        this.message = shared_1.noop;
         this.external = options?.external;
     }
     get _socket() {
@@ -28,7 +23,7 @@ class WebSocket {
         };
     }
     get readyState() {
-        return this.external ? this.OPEN : this.CLOSED;
+        return this.external ? 1 : 3;
     }
     set onopen(listener) {
         this.on('open', listener);
@@ -43,17 +38,12 @@ class WebSocket {
         this.on('message', listener);
     }
     on(event, listener) {
-        if (this.registeredEvents[event] === undefined) {
-            console.warn(`cWS does not support '${event}' event`);
-            return;
-        }
-        if (typeof listener !== 'function') {
-            throw new Error(`Listener for '${event}' event must be a function`);
-        }
-        if (this.registeredEvents[event] !== shared_1.noop) {
-            console.warn(`cWS does not support multiple listeners for the same event. Old listener for '${event}' event will be overwritten`);
-        }
-        this.registeredEvents[event] = listener;
+        if (event === 'open') this.open = listener;
+        else if (event === 'ping') this.ping = listener;
+        else if (event === 'error') this.error = listener;
+        else if (event === 'close') this.close = listener;
+        else if (event === 'message') this.message = listener;
+        else console.error(`invalid event`, event);
     }
     send(message) {
         // this check is needed to ensure the socket isn't closed
@@ -82,6 +72,4 @@ class WebSocket {
     }
 }
 exports.WebSocket = WebSocket;
-WebSocket.OPEN = 1;
-WebSocket.CLOSED = 3;
 WebSocket.Server = server_1.WebSocketServer;

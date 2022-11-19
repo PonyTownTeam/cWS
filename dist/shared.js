@@ -36,28 +36,28 @@ function setupNative(group, type, wsServer) {
         }
         const webSocket = exports.native.getUserData(external);
         webSocket.external = external;
-        webSocket.registeredEvents['open']();
+        webSocket.open();
     });
     exports.native[type].group.onPing(group, (message, webSocket) => {
-        webSocket.registeredEvents['ping'](message);
+        webSocket.ping(message);
     });
     exports.native[type].group.onPong(group, (message, webSocket) => {
-        webSocket.registeredEvents['pong'](message);
+        //webSocket.pong(message);
     });
     exports.native[type].group.onMessage(group, (message, webSocket) => {
-        webSocket.registeredEvents['message'](message);
+        webSocket.message(message);
     });
     exports.native[type].group.onDisconnection(group, (newExternal, code, message, webSocket) => {
         webSocket.external = null;
         process.nextTick(() => {
-            webSocket.registeredEvents['close'](code || 1005, message || '');
+            webSocket.close(code || 1005, message || '');
         });
         exports.native.clearUserData(newExternal);
     });
     if (type === 'client') {
         exports.native[type].group.onError(group, (webSocket) => {
             process.nextTick(() => {
-                webSocket.registeredEvents['error']({
+                webSocket.error({
                     message: 'cWs client connection error',
                     stack: 'cWs client connection error'
                 });
