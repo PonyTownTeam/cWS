@@ -4,10 +4,9 @@ const server_1 = require("./server");
 const shared_1 = require("./shared");
 const clientGroup = shared_1.native.client.group.create(0, shared_1.DEFAULT_PAYLOAD_LIMIT);
 shared_1.setupNative(clientGroup, 'client');
+const server = shared_1.native.server;
 class WebSocket {
-    constructor(url, options = {}) {
-        this.url = url;
-        this.options = options;
+    constructor(_url, options = undefined) {
         this.OPEN = WebSocket.OPEN;
         this.CLOSED = WebSocket.OPEN;
         this.registeredEvents = {
@@ -18,14 +17,7 @@ class WebSocket {
             close: shared_1.noop,
             message: shared_1.noop
         };
-        this.socketType = 'client';
-        if (!this.url && this.options.external) {
-            this.socketType = 'server';
-            this.external = this.options.external;
-        }
-        else {
-            shared_1.native.connect(clientGroup, url, this);
-        }
+        this.external = options?.external;
     }
     get _socket() {
         const address = this.external ? shared_1.native.getAddress(this.external) : new Array(3);
@@ -64,25 +56,27 @@ class WebSocket {
         this.registeredEvents[event] = listener;
     }
     send(message) {
+        // this check is needed to ensure the socket isn't closed
         if (this.external) {
-            const opCode = typeof message === 'string' ? shared_1.OPCODE_TEXT : shared_1.OPCODE_BINARY;
-            shared_1.native.server.send(this.external, message, opCode, null, false);
+            // at least the initial message is string, binary afterwards
+            const opCode = typeof message === 'string' ? 1 : 2;
+            server.send(this.external, message, opCode, null, false);
         }
     }
     ping(message) {
         if (this.external) {
-            shared_1.native.server.send(this.external, message, shared_1.OPCODE_PING);
+            server.send(this.external, message, 9);
         }
     }
     close(code = 1000, reason) {
         if (this.external) {
-            shared_1.native.server.close(this.external, code, reason);
+            server.close(this.external, code, reason);
             this.external = null;
         }
     }
     terminate() {
         if (this.external) {
-            shared_1.native.server.terminate(this.external);
+            server.terminate(this.external);
             this.external = null;
         }
     }
