@@ -214,6 +214,20 @@ namespace node {
 class IsolateData;
 class Environment;
 
+namespace ProcessFlags {
+enum Flags : uint64_t {
+  kNoFlags = 0,
+  // Enable stdio inheritance, which is disabled by default.
+  kEnableStdioInheritance = 1 << 0,
+  // Disable reading the NODE_OPTIONS environment variable.
+  kDisableNodeOptionsEnv = 1 << 1,
+  // Do not parse CLI options.
+  kDisableCLIOptions = 1 << 2,
+  // Do not initialize ICU.
+  kNoICU = 1 << 3,
+};
+}  // namespace ProcessFlags
+
 // TODO(addaleax): Officially deprecate this and replace it with something
 // better suited for a public embedder API.
 NODE_EXTERN int Start(int argc, char* argv[]);
@@ -226,9 +240,16 @@ NODE_EXTERN int Stop(Environment* env);
 // from argv, fill exec_argv, and possibly add errors resulting from parsing
 // the arguments to `errors`. The return value is a suggested exit code for the
 // program; If it is 0, then initializing Node.js succeeded.
-NODE_EXTERN int InitializeNodeWithArgs(std::vector<std::string>* argv,
-                                       std::vector<std::string>* exec_argv,
-                                       std::vector<std::string>* errors);
+NODE_EXTERN int InitializeNodeWithArgs(
+    std::vector<std::string>* argv,
+    std::vector<std::string>* exec_argv,
+    std::vector<std::string>* errors);
+// TODO(zcbenz): Turn above overloaded version into below's default argument.
+NODE_EXTERN int InitializeNodeWithArgs(
+    std::vector<std::string>* argv,
+    std::vector<std::string>* exec_argv,
+    std::vector<std::string>* errors,
+    ProcessFlags::Flags flags);
 
 enum OptionEnvvarSettings {
   kAllowedInEnvironment,
@@ -402,7 +423,22 @@ enum Flags : uint64_t {
   kNoRegisterESMLoader = 1 << 3,
   // Set this flag to make Node.js track "raw" file descriptors, i.e. managed
   // by fs.open() and fs.close(), and close them during FreeEnvironment().
-  kTrackUnmanagedFds = 1 << 4
+  kTrackUnmanagedFds = 1 << 4,
+  // Set this flag to force hiding console windows when spawning child
+  // processes. This is usually used when embedding Node.js in GUI programs on
+  // Windows.
+  kHideConsoleWindows = 1 << 5,
+  // Set this flag to disable loading native addons via `process.dlopen`.
+  // This environment flag is especially important for worker threads
+  // so that a worker thread can't load a native addon even if `execArgv`
+  // is overwritten and `--no-addons` is not specified but was specified
+  // for this Environment instance.
+  kNoNativeAddons = 1 << 6,
+  // Set this flag to disable searching modules from global paths like
+  // $HOME/.node_modules and $NODE_PATH. This is used by standalone apps that
+  // do not expect to have their behaviors changed because of globally
+  // installed modules.
+  kNoGlobalSearchPaths = 1 << 7
 };
 }  // namespace EnvironmentFlags
 
@@ -1002,6 +1038,9 @@ class InternalCallbackScope;
 class NODE_EXTERN CallbackScope {
  public:
   CallbackScope(v8::Isolate* isolate,
+                v8::Local<v8::Object> resource,
+                async_context asyncContext);
+  CallbackScope(Environment* env,
                 v8::Local<v8::Object> resource,
                 async_context asyncContext);
   ~CallbackScope();

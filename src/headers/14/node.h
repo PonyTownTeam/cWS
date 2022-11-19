@@ -117,6 +117,8 @@
 // Forward-declare libuv loop
 struct uv_loop_s;
 
+struct napi_module;
+
 // Forward-declare these functions now to stop MSVS from becoming
 // terminally confused when it's done in node_internals.h
 namespace node {
@@ -333,7 +335,9 @@ class NODE_EXTERN MultiIsolatePlatform : public v8::Platform {
 
 enum IsolateSettingsFlags {
   MESSAGE_LISTENER_WITH_ERROR_LEVEL = 1 << 0,
-  DETAILED_SOURCE_POSITIONS_FOR_PROFILING = 1 << 1
+  DETAILED_SOURCE_POSITIONS_FOR_PROFILING = 1 << 1,
+  SHOULD_NOT_SET_PROMISE_REJECTION_CALLBACK = 1 << 2,
+  SHOULD_NOT_SET_PREPARE_STACK_TRACE_CALLBACK = 1 << 3
 };
 
 struct IsolateSettings {
@@ -413,7 +417,24 @@ enum Flags : uint64_t {
   // Set if this Environment instance is associated with the global inspector
   // handling code (i.e. listening on SIGUSR1).
   // This is set when using kDefaultFlags.
-  kOwnsInspector = 1 << 2
+  kOwnsInspector = 1 << 2,
+  // Set if Node.js should not run its own esm loader. This is needed by some
+  // embedders, because it's possible for the Node.js esm loader to conflict
+  // with another one in an embedder environment, e.g. Blink's in Chromium.
+  kNoRegisterESMLoader = 1 << 3,
+  // Set this flag to make Node.js track "raw" file descriptors, i.e. managed
+  // by fs.open() and fs.close(), and close them during FreeEnvironment().
+  kTrackUnmanagedFds = 1 << 4,
+  // Set this flag to force hiding console windows when spawning child
+  // processes. This is usually used when embedding Node.js in GUI programs on
+  // Windows.
+  kHideConsoleWindows = 1 << 5,
+  // Set this flag to disable loading native addons via `process.dlopen`.
+  // This environment flag is especially important for worker threads
+  // so that a worker thread can't load a native addon even if `execArgv`
+  // is overwritten and `--no-addons` is not specified but was specified
+  // for this Environment instance.
+  kNoNativeAddons = 1 << 6
 };
 }  // namespace EnvironmentFlags
 
@@ -489,6 +510,18 @@ NODE_EXTERN void DefaultProcessExitHandler(Environment* env, int exit_code);
 
 // This may return nullptr if context is not associated with a Node instance.
 NODE_EXTERN Environment* GetCurrentEnvironment(v8::Local<v8::Context> context);
+NODE_EXTERN IsolateData* GetEnvironmentIsolateData(Environment* env);
+NODE_EXTERN ArrayBufferAllocator* GetArrayBufferAllocator(IsolateData* data);
+
+NODE_EXTERN void OnFatalError(const char* location, const char* message);
+NODE_EXTERN void PromiseRejectCallback(v8::PromiseRejectMessage message);
+NODE_EXTERN bool AllowWasmCodeGenerationCallback(v8::Local<v8::Context> context,
+                                            v8::Local<v8::String>);
+NODE_EXTERN bool ShouldAbortOnUncaughtException(v8::Isolate* isolate);
+NODE_EXTERN v8::MaybeLocal<v8::Value> PrepareStackTraceCallback(
+    v8::Local<v8::Context> context,
+    v8::Local<v8::Value> exception,
+    v8::Local<v8::Array> trace);
 
 // This returns the MultiIsolatePlatform used in the main thread of Node.js.
 // If NODE_USE_V8_PLATFORM has not been defined when Node.js was built,
@@ -519,8 +552,19 @@ NODE_EXTERN void FreePlatform(MultiIsolatePlatform* platform);
 NODE_EXTERN v8::TracingController* GetTracingController();
 NODE_EXTERN void SetTracingController(v8::TracingController* controller);
 
-NODE_EXTERN void EmitBeforeExit(Environment* env);
-NODE_EXTERN int EmitExit(Environment* env);
+// Run `process.emit('beforeExit')` as it would usually happen when Node.js is
+// run in standalone mode.
+NODE_EXTERN v8::Maybe<bool> EmitProcessBeforeExit(Environment* env);
+NODE_DEPRECATED("Use Maybe version (EmitProcessBeforeExit) instead",
+    NODE_EXTERN void EmitBeforeExit(Environment* env));
+// Run `process.emit('exit')` as it would usually happen when Node.js is run
+// in standalone mode. The return value corresponds to the exit code.
+NODE_EXTERN v8::Maybe<int> EmitProcessExit(Environment* env);
+NODE_DEPRECATED("Use Maybe version (EmitProcessExit) instead",
+    NODE_EXTERN int EmitExit(Environment* env));
+
+// Runs hooks added through `AtExit()`. This is part of `FreeEnvironment()`,
+// so calling it manually is typically not necessary.
 NODE_EXTERN void RunAtExit(Environment* env);
 
 // This may return nullptr if the current v8::Context is not associated
@@ -630,7 +674,18 @@ inline void NODE_SET_PROTOTYPE_METHOD(v8::Local<v8::FunctionTemplate> recv,
 #define NODE_SET_PROTOTYPE_METHOD node::NODE_SET_PROTOTYPE_METHOD
 
 // BINARY is a deprecated alias of LATIN1.
-enum encoding {ASCII, UTF8, BASE64, UCS2, BINARY, HEX, BUFFER, LATIN1 = BINARY};
+// BASE64URL is not currently exposed to the JavaScript side.
+enum encoding {
+  ASCII,
+  UTF8,
+  BASE64,
+  UCS2,
+  BINARY,
+  HEX,
+  BUFFER,
+  BASE64URL,
+  LATIN1 = BINARY
+};
 
 NODE_EXTERN enum encoding ParseEncoding(
     v8::Isolate* isolate,
@@ -817,6 +872,8 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
 // the time during which the Environment exists.
 NODE_EXTERN void AddLinkedBinding(Environment* env, const node_module& mod);
 NODE_EXTERN void AddLinkedBinding(Environment* env,
+                                  const struct napi_module& mod);
+NODE_EXTERN void AddLinkedBinding(Environment* env,
                                   const char* name,
                                   addon_context_register_func fn,
                                   void* priv);
@@ -863,6 +920,20 @@ NODE_EXTERN void AddEnvironmentCleanupHook(v8::Isolate* isolate,
 NODE_EXTERN void RemoveEnvironmentCleanupHook(v8::Isolate* isolate,
                                               void (*fun)(void* arg),
                                               void* arg);
+
+/* These are async equivalents of the above. After the cleanup hook is invoked,
+ * `cb(cbarg)` *must* be called, and attempting to remove the cleanup hook will
+ * have no effect. */
+struct ACHHandle;
+struct NODE_EXTERN DeleteACHHandle { void operator()(ACHHandle*) const; };
+typedef std::unique_ptr<ACHHandle, DeleteACHHandle> AsyncCleanupHookHandle;
+
+NODE_EXTERN AsyncCleanupHookHandle AddEnvironmentCleanupHook(
+    v8::Isolate* isolate,
+    void (*fun)(void* arg, void (*cb)(void*), void* cbarg),
+    void* arg);
+
+NODE_EXTERN void RemoveEnvironmentCleanupHook(AsyncCleanupHookHandle holder);
 
 /* Returns the id of the current execution context. If the return value is
  * zero then no execution has been set. This will happen if the user handles
@@ -920,6 +991,9 @@ class InternalCallbackScope;
 class NODE_EXTERN CallbackScope {
  public:
   CallbackScope(v8::Isolate* isolate,
+                v8::Local<v8::Object> resource,
+                async_context asyncContext);
+  CallbackScope(Environment* env,
                 v8::Local<v8::Object> resource,
                 async_context asyncContext);
   ~CallbackScope();

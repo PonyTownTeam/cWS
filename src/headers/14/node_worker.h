@@ -50,6 +50,7 @@ class Worker : public AsyncWrap {
   void MemoryInfo(MemoryTracker* tracker) const override;
   SET_MEMORY_INFO_NAME(Worker)
   SET_SELF_SIZE(Worker)
+  bool IsNotIndicativeOfMemoryLeakAtExit() const override;
 
   bool is_stopped() const;
 
@@ -65,9 +66,11 @@ class Worker : public AsyncWrap {
       const v8::FunctionCallbackInfo<v8::Value>& args);
   v8::Local<v8::Float64Array> GetResourceLimits(v8::Isolate* isolate) const;
   static void TakeHeapSnapshot(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void LoopIdleTime(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void LoopStartTime(const v8::FunctionCallbackInfo<v8::Value>& args);
 
  private:
-  void CreateEnvMessagePort(Environment* env);
+  bool CreateEnvMessagePort(Environment* env);
   static size_t NearHeapLimit(void* data, size_t current_heap_limit,
                               size_t initial_heap_limit);
 
@@ -114,6 +117,7 @@ class Worker : public AsyncWrap {
   bool stopped_ = true;
 
   bool has_ref_ = true;
+  uint64_t environment_flags_ = EnvironmentFlags::kNoFlags;
 
   // The real Environment of the worker object. It has a lesser
   // lifespan than the worker object itself - comes to life

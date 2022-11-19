@@ -1,4 +1,4 @@
-<h1 align="center">ClusterWS/cWS</h1>
+<h1 align="center">(Deprecated) ClusterWS/cWS</h1>
 <h6 align="center">Fast WebSocket implementation for Node.js</h6>
 
 <p align="center">
@@ -9,17 +9,25 @@
 
 ## Important Notes
 
+* **Consider using latest version of uWebSockets if you don't need ws compatibility.**
+
+* This repository is a fork of [ClusterWS/cWS](https://github.com/ClusterWS/cWS)
+
 * This repository is a fork of [uWebSockets v0.14](https://github.com/uNetworking/uWebSockets/tree/v0.14) therefore has two licence [MIT](https://github.com/ClusterWS/uWS/blob/master/LICENSE) and [ZLIB](https://github.com/ClusterWS/uWS/blob/master/src/LICENSE)
 * Consider using latest [uWebSockets](https://github.com/uNetworking/uWebSockets.js) version instead
-* You can support me through [Patreon](https://www.patreon.com/clusterws) and [PayPal](https://www.paypal.me/goriunov)
 
-## Supported Node Versions
+## Supported Node Versions (SSL)
 
-|  CWS Version | Node 10  | Node 11 | Node 12          |  Node 13  | Node 14 |
-|--------------|----------|---------|------------------|-----------|---------|
-| 3.0.0        | >=10.0   |    X    | >=12.16          | >=13.9    | >=14.5  |
-| 2.0.0        | >=10.0   |    X    | >=12.16          | >=13.9    |   X     |
-| 1.6.0        | >=10.0   | >=11.0  | >=12.0 & <12.16  | >=13.9    |   X     |
+This table is true if you run ssl directly with `cws` (`Node.js`). In case if you use proxy for example `nginx`, `cws` can be run on bigger coverage.
+
+|  CWS Version | Node 10  | Node 11 | Node 12          |  Node 13  | Node 14 | Node 16 | Node 18 | Node 19 |
+|--------------|----------|---------|------------------|-----------|---------|---------|---------|---------|
+| 4.2.0        |    X     |    X    | >=12.18          |     X     | >=14.5  | >=16.0  | >=18.0  | >=19.0  |
+| 4.1.0        |    X     |    X    | >=12.18          |     X     | >=14.5  | >=16.0  | >=18.0  |    X    |
+| 4.0.0        |    X     |    X    | >=12.18          |     X     | >=14.5  | >=16.0  |    X    |    X    |
+| 3.0.0        | >=10.0   |    X    | >=12.16          | >=13.9    | >=14.5  |    X    |    X    |    X    |
+| 2.0.0        | >=10.0   |    X    | >=12.16          | >=13.9    |   X     |    X    |    X    |    X    |
+| 1.6.0        | >=10.0   | >=11.0  | >=12.0 & <12.16  | >=13.9    |   X     |    X    |    X    |    X    |
 
 ## Documentation
 

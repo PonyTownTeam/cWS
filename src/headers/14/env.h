@@ -150,6 +150,7 @@ constexpr size_t kFsStatsBufferLength =
   V(contextify_context_private_symbol, "node:contextify:context")             \
   V(contextify_global_private_symbol, "node:contextify:global")               \
   V(decorated_private_symbol, "node:decorated")                               \
+  V(napi_type_tag, "node:napi:type_tag")                                      \
   V(napi_wrapper, "node:napi:wrapper")                                        \
   V(untransferable_object_private_symbol, "node:untransferableObject")        \
 
@@ -178,6 +179,7 @@ constexpr size_t kFsStatsBufferLength =
   V(asn1curve_string, "asn1Curve")                                             \
   V(async_ids_stack_string, "async_ids_stack")                                 \
   V(bits_string, "bits")                                                       \
+  V(block_list_string, "blockList")                                            \
   V(buffer_string, "buffer")                                                   \
   V(bytes_parsed_string, "bytesParsed")                                        \
   V(bytes_read_string, "bytesRead")                                            \
@@ -205,6 +207,7 @@ constexpr size_t kFsStatsBufferLength =
   V(crypto_rsa_pss_string, "rsa-pss")                                          \
   V(cwd_string, "cwd")                                                         \
   V(data_string, "data")                                                       \
+  V(default_is_true_string, "defaultIsTrue")                                   \
   V(deserialize_info_string, "deserializeInfo")                                \
   V(dest_string, "dest")                                                       \
   V(destroyed_string, "destroyed")                                             \
@@ -212,6 +215,8 @@ constexpr size_t kFsStatsBufferLength =
   V(dh_string, "DH")                                                           \
   V(dns_a_string, "A")                                                         \
   V(dns_aaaa_string, "AAAA")                                                   \
+  V(dns_caa_string, "CAA")                                                     \
+  V(dns_critical_string, "critical")                                           \
   V(dns_cname_string, "CNAME")                                                 \
   V(dns_mx_string, "MX")                                                       \
   V(dns_naptr_string, "NAPTR")                                                 \
@@ -245,9 +250,11 @@ constexpr size_t kFsStatsBufferLength =
   V(fd_string, "fd")                                                           \
   V(fields_string, "fields")                                                   \
   V(file_string, "file")                                                       \
+  V(filename_string, "filename")                                               \
   V(fingerprint256_string, "fingerprint256")                                   \
   V(fingerprint_string, "fingerprint")                                         \
   V(flags_string, "flags")                                                     \
+  V(flowlabel_string, "flowlabel")                                             \
   V(fragment_string, "fragment")                                               \
   V(function_string, "function")                                               \
   V(get_data_clone_error_string, "_getDataCloneError")                         \
@@ -274,6 +281,7 @@ constexpr size_t kFsStatsBufferLength =
   V(issuercert_string, "issuerCertificate")                                    \
   V(kill_signal_string, "killSignal")                                          \
   V(kind_string, "kind")                                                       \
+  V(length_string, "length")                                                   \
   V(library_string, "library")                                                 \
   V(mac_string, "mac")                                                         \
   V(max_buffer_string, "maxBuffer")                                            \
@@ -315,6 +323,7 @@ constexpr size_t kFsStatsBufferLength =
   V(options_string, "options")                                                 \
   V(order_string, "order")                                                     \
   V(output_string, "output")                                                   \
+  V(overlapped_string, "overlapped")                                           \
   V(parse_error_string, "Parse Error")                                         \
   V(password_string, "password")                                               \
   V(path_string, "path")                                                       \
@@ -405,6 +414,8 @@ constexpr size_t kFsStatsBufferLength =
   V(async_wrap_object_ctor_template, v8::FunctionTemplate)                     \
   V(base_object_ctor_template, v8::FunctionTemplate)                           \
   V(binding_data_ctor_template, v8::FunctionTemplate)                          \
+  V(blob_constructor_template, v8::FunctionTemplate)                           \
+  V(blocklist_constructor_template, v8::FunctionTemplate)                      \
   V(compiled_fn_entry_template, v8::ObjectTemplate)                            \
   V(dir_instance_template, v8::ObjectTemplate)                                 \
   V(fd_constructor_template, v8::ObjectTemplate)                               \
@@ -412,19 +423,22 @@ constexpr size_t kFsStatsBufferLength =
   V(filehandlereadwrap_template, v8::ObjectTemplate)                           \
   V(fsreqpromise_constructor_template, v8::ObjectTemplate)                     \
   V(handle_wrap_ctor_template, v8::FunctionTemplate)                           \
-  V(histogram_instance_template, v8::ObjectTemplate)                           \
+  V(histogram_ctor_template, v8::FunctionTemplate)                             \
   V(http2settings_constructor_template, v8::ObjectTemplate)                    \
   V(http2stream_constructor_template, v8::ObjectTemplate)                      \
   V(http2ping_constructor_template, v8::ObjectTemplate)                        \
   V(i18n_converter_template, v8::ObjectTemplate)                               \
+  V(intervalhistogram_constructor_template, v8::FunctionTemplate)              \
   V(libuv_stream_wrap_ctor_template, v8::FunctionTemplate)                     \
   V(message_port_constructor_template, v8::FunctionTemplate)                   \
+  V(microtask_queue_ctor_template, v8::FunctionTemplate)                       \
   V(pipe_constructor_template, v8::FunctionTemplate)                           \
   V(promise_wrap_template, v8::ObjectTemplate)                                 \
   V(sab_lifetimepartner_constructor_template, v8::FunctionTemplate)            \
   V(script_context_constructor_template, v8::FunctionTemplate)                 \
   V(secure_context_constructor_template, v8::FunctionTemplate)                 \
   V(shutdown_wrap_template, v8::ObjectTemplate)                                \
+  V(socketaddress_constructor_template, v8::FunctionTemplate)                  \
   V(streambaseoutputstream_constructor_template, v8::ObjectTemplate)           \
   V(tcp_constructor_template, v8::FunctionTemplate)                            \
   V(tty_constructor_template, v8::FunctionTemplate)                            \
@@ -465,6 +479,8 @@ constexpr size_t kFsStatsBufferLength =
   V(internal_binding_loader, v8::Function)                                     \
   V(immediate_callback_function, v8::Function)                                 \
   V(inspector_console_extension_installer, v8::Function)                       \
+  V(inspector_disable_async_hooks, v8::Function)                               \
+  V(inspector_enable_async_hooks, v8::Function)                                \
   V(messaging_deserialize_create_object, v8::Function)                         \
   V(message_port, v8::Object)                                                  \
   V(native_module_require, v8::Function)                                       \
@@ -473,6 +489,10 @@ constexpr size_t kFsStatsBufferLength =
   V(prepare_stack_trace_callback, v8::Function)                                \
   V(process_object, v8::Object)                                                \
   V(primordials, v8::Object)                                                   \
+  V(primordials_safe_map_prototype_object, v8::Object)                         \
+  V(primordials_safe_set_prototype_object, v8::Object)                         \
+  V(primordials_safe_weak_map_prototype_object, v8::Object)                    \
+  V(primordials_safe_weak_set_prototype_object, v8::Object)                    \
   V(promise_hook_handler, v8::Function)                                        \
   V(promise_reject_callback, v8::Function)                                     \
   V(script_data_constructor_function, v8::Function)                            \
@@ -504,8 +524,6 @@ class IsolateData : public MemoryRetainer {
   inline std::shared_ptr<PerIsolateOptions> options();
   inline void set_options(std::shared_ptr<PerIsolateOptions> options);
 
-  inline bool uses_node_allocator() const;
-  inline v8::ArrayBuffer::Allocator* allocator() const;
   inline NodeArrayBufferAllocator* node_allocator() const;
 
   inline worker::Worker* worker_context() const;
@@ -525,6 +543,7 @@ class IsolateData : public MemoryRetainer {
 #undef VP
   inline v8::Local<v8::String> async_wrap_provider(int index) const;
 
+  size_t max_young_gen_size = 1;
   std::unordered_map<const char*, v8::Eternal<v8::String>> static_str_map;
 
   inline v8::Isolate* isolate() const;
@@ -555,9 +574,7 @@ class IsolateData : public MemoryRetainer {
 
   v8::Isolate* const isolate_;
   uv_loop_t* const event_loop_;
-  v8::ArrayBuffer::Allocator* const allocator_;
   NodeArrayBufferAllocator* const node_allocator_;
-  const bool uses_node_allocator_;
   MultiIsolatePlatform* platform_;
   std::shared_ptr<PerIsolateOptions> options_;
   worker::Worker* worker_context_ = nullptr;
@@ -621,6 +638,7 @@ class AsyncHooks : public MemoryRetainer {
     kTotals,
     kCheck,
     kStackLength,
+    kUsesExecutionAsyncResource,
     kFieldsCount,
   };
 
@@ -635,7 +653,17 @@ class AsyncHooks : public MemoryRetainer {
   inline AliasedUint32Array& fields();
   inline AliasedFloat64Array& async_id_fields();
   inline AliasedFloat64Array& async_ids_stack();
-  inline v8::Local<v8::Array> execution_async_resources();
+  inline v8::Local<v8::Array> js_execution_async_resources();
+  // Returns the native executionAsyncResource value at stack index `index`.
+  // Resources provided on the JS side are not stored on the native stack,
+  // in which case an empty `Local<>` is returned.
+  // The `js_execution_async_resources` array contains the value in that case.
+  inline v8::Local<v8::Object> native_execution_async_resource(size_t index);
+
+  inline void SetJSPromiseHooks(v8::Local<v8::Function> init,
+                                v8::Local<v8::Function> before,
+                                v8::Local<v8::Function> after,
+                                v8::Local<v8::Function> resolve);
 
   inline v8::Local<v8::String> provider_string(int idx);
 
@@ -643,9 +671,12 @@ class AsyncHooks : public MemoryRetainer {
   inline Environment* env();
 
   inline void push_async_context(double async_id, double trigger_async_id,
-      v8::Local<v8::Value> execution_async_resource_);
+      v8::Local<v8::Object> execution_async_resource_);
   inline bool pop_async_context(double async_id);
   inline void clear_async_id_stack();  // Used in fatal exceptions.
+
+  inline void AddContext(v8::Local<v8::Context> ctx);
+  inline void RemoveContext(v8::Local<v8::Context> ctx);
 
   AsyncHooks(const AsyncHooks&) = delete;
   AsyncHooks& operator=(const AsyncHooks&) = delete;
@@ -688,7 +719,12 @@ class AsyncHooks : public MemoryRetainer {
 
   void grow_async_ids_stack();
 
-  v8::Global<v8::Array> execution_async_resources_;
+  v8::Global<v8::Array> js_execution_async_resources_;
+  std::vector<v8::Global<v8::Object>> native_execution_async_resources_;
+
+  std::vector<v8::Global<v8::Context>> contexts_;
+
+  std::array<v8::Global<v8::Function>, 4> js_promise_hooks_;
 };
 
 class ImmediateInfo : public MemoryRetainer {
@@ -781,7 +817,9 @@ class ShouldNotAbortOnUncaughtScope {
 
 class CleanupHookCallback {
  public:
-  CleanupHookCallback(void (*fn)(void*),
+  typedef void (*Callback)(void*);
+
+  CleanupHookCallback(Callback fn,
                       void* arg,
                       uint64_t insertion_order_counter)
       : fn_(fn), arg_(arg), insertion_order_counter_(insertion_order_counter) {}
@@ -801,7 +839,7 @@ class CleanupHookCallback {
 
  private:
   friend class Environment;
-  void (*fn_)(void*);
+  Callback fn_;
   void* arg_;
 
   // We keep track of the insertion order for these objects, so that we can
@@ -823,8 +861,12 @@ class Environment : public MemoryRetainer {
   void MemoryInfo(MemoryTracker* tracker) const override;
 
   void CreateProperties();
+  void VerifyNoStrongBaseObjects();
   // Should be called before InitializeInspector()
   void InitializeDiagnostics();
+
+  std::string GetCwd();
+
 #if HAVE_INSPECTOR
   // If the environment is created for a worker, pass parent_handle and
   // the ownership if transferred into the Environment.
@@ -909,6 +951,8 @@ class Environment : public MemoryRetainer {
   inline void AssignToContext(v8::Local<v8::Context> context,
                               const ContextInfo& info);
 
+  void StartProfilerIdleNotifier();
+
   inline v8::Isolate* isolate() const;
   inline uv_loop_t* event_loop() const;
   inline void TryLoadAddon(
@@ -940,6 +984,9 @@ class Environment : public MemoryRetainer {
 
   void PrintSyncTrace() const;
   inline void set_trace_sync_io(bool value);
+
+  inline void set_force_context_aware(bool value);
+  inline bool force_context_aware() const;
 
   // This stores whether the --abort-on-uncaught-exception flag was passed
   // to Node.
@@ -1007,8 +1054,12 @@ class Environment : public MemoryRetainer {
   inline void set_has_serialized_options(bool has_serialized_options);
 
   inline bool is_main_thread() const;
+  inline bool no_native_addons() const;
+  inline bool should_not_register_esm_loader() const;
   inline bool owns_process_state() const;
   inline bool owns_inspector() const;
+  inline bool tracks_unmanaged_fds() const;
+  inline bool hide_console_windows() const;
   inline uint64_t thread_id() const;
   inline worker::Worker* worker_context() const;
   Environment* worker_parent_env() const;
@@ -1021,10 +1072,14 @@ class Environment : public MemoryRetainer {
   inline void set_stopping(bool value);
   inline std::list<node_module>* extra_linked_bindings();
   inline node_module* extra_linked_bindings_head();
+  inline node_module* extra_linked_bindings_tail();
   inline const Mutex& extra_linked_bindings_mutex() const;
 
   inline bool filehandle_close_warning() const;
   inline void set_filehandle_close_warning(bool on);
+
+  inline void set_source_maps_enabled(bool on);
+  inline bool source_maps_enabled() const;
 
   inline void ThrowError(const char* errmsg);
   inline void ThrowTypeError(const char* errmsg);
@@ -1069,6 +1124,23 @@ class Environment : public MemoryRetainer {
   inline void SetProtoMethodNoSideEffect(v8::Local<v8::FunctionTemplate> that,
                                          const char* name,
                                          v8::FunctionCallback callback);
+
+  enum class SetConstructorFunctionFlag {
+    NONE,
+    SET_CLASS_NAME,
+  };
+
+  inline void SetConstructorFunction(v8::Local<v8::Object> that,
+                          const char* name,
+                          v8::Local<v8::FunctionTemplate> tmpl,
+                          SetConstructorFunctionFlag flag =
+                              SetConstructorFunctionFlag::SET_CLASS_NAME);
+
+  inline void SetConstructorFunction(v8::Local<v8::Object> that,
+                          v8::Local<v8::String> name,
+                          v8::Local<v8::FunctionTemplate> tmpl,
+                          SetConstructorFunctionFlag flag =
+                              SetConstructorFunctionFlag::SET_CLASS_NAME);
 
   void AtExit(void (*cb)(void* arg), void* arg);
   void RunAtExitCallbacks();
@@ -1155,10 +1227,14 @@ class Environment : public MemoryRetainer {
   void ScheduleTimer(int64_t duration);
   void ToggleTimerRef(bool ref);
 
-  inline void AddCleanupHook(void (*fn)(void*), void* arg);
-  inline void RemoveCleanupHook(void (*fn)(void*), void* arg);
+  using CleanupCallback = CleanupHookCallback::Callback;
+  inline void AddCleanupHook(CleanupCallback cb, void* arg);
+  inline void RemoveCleanupHook(CleanupCallback cb, void* arg);
   void RunCleanup();
 
+  static size_t NearHeapLimitCallback(void* data,
+                                      size_t current_heap_limit,
+                                      size_t initial_heap_limit);
   static void BuildEmbedderGraph(v8::Isolate* isolate,
                                  v8::EmbedderGraph* graph,
                                  void* data);
@@ -1220,6 +1296,9 @@ class Environment : public MemoryRetainer {
   inline std::unordered_map<char*, std::unique_ptr<v8::BackingStore>>*
       released_allocated_buffers();
 
+  void AddUnmanagedFd(int fd);
+  void RemoveUnmanagedFd(int fd);
+
  private:
   inline void ThrowError(v8::Local<v8::Value> (*fun)(v8::Local<v8::String>),
                          const char* errmsg);
@@ -1230,6 +1309,8 @@ class Environment : public MemoryRetainer {
   uv_timer_t timer_handle_;
   uv_check_t immediate_check_handle_;
   uv_idle_t immediate_idle_handle_;
+  uv_prepare_t idle_prepare_handle_;
+  uv_check_t idle_check_handle_;
   uv_async_t task_queues_async_;
   int64_t task_queues_async_refs_ = 0;
 
@@ -1243,6 +1324,8 @@ class Environment : public MemoryRetainer {
   bool emit_env_nonstring_warning_ = true;
   bool emit_err_name_warning_ = true;
   bool emit_filehandle_warning_ = true;
+  bool source_maps_enabled_ = false;
+
   size_t async_callback_scope_depth_ = 0;
   std::vector<double> destroy_async_id_list_;
 
@@ -1271,6 +1354,9 @@ class Environment : public MemoryRetainer {
   std::vector<std::string> exec_argv_;
   std::vector<std::string> argv_;
   std::string exec_path_;
+
+  bool is_processing_heap_limit_callback_ = false;
+  int64_t heap_limit_snapshot_taken_ = 0;
 
   uint32_t module_id_counter_ = 0;
   uint32_t script_id_counter_ = 0;
@@ -1356,6 +1442,8 @@ class Environment : public MemoryRetainer {
   int64_t base_object_count_ = 0;
   int64_t initial_base_object_count_ = 0;
   std::atomic_bool is_stopping_ { false };
+
+  std::unordered_set<int> unmanaged_fds_;
 
   std::function<void(Environment*, int)> process_exit_handler_ {
       DefaultProcessExitHandler };

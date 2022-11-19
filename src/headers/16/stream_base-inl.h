@@ -3,7 +3,6 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "allocated_buffer-inl.h"
 #include "async_wrap-inl.h"
 #include "base_object-inl.h"
 #include "node.h"
@@ -137,8 +136,11 @@ int StreamBase::Shutdown(v8::Local<v8::Object> req_wrap_obj) {
     StreamReq::ResetObject(req_wrap_obj);
   }
 
+  BaseObjectPtr<AsyncWrap> req_wrap_ptr;
   AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(GetAsyncWrap());
   ShutdownWrap* req_wrap = CreateShutdownWrap(req_wrap_obj);
+  if (req_wrap != nullptr)
+    req_wrap_ptr.reset(req_wrap->GetAsyncWrap());
   int err = DoShutdown(req_wrap);
 
   if (err != 0 && req_wrap != nullptr) {
@@ -147,9 +149,11 @@ int StreamBase::Shutdown(v8::Local<v8::Object> req_wrap_obj) {
 
   const char* msg = Error();
   if (msg != nullptr) {
-    req_wrap_obj->Set(
-        env->context(),
-        env->error_string(), OneByteString(env->isolate(), msg)).Check();
+    if (req_wrap_obj->Set(env->context(),
+                          env->error_string(),
+                          OneByteString(env->isolate(), msg)).IsNothing()) {
+      return UV_EBUSY;
+    }
     ClearError();
   }
 
@@ -172,7 +176,7 @@ StreamWriteResult StreamBase::Write(
   if (send_handle == nullptr) {
     err = DoTryWrite(&bufs, &count);
     if (err != 0 || count == 0) {
-      return StreamWriteResult { false, err, nullptr, total_bytes };
+      return StreamWriteResult { false, err, nullptr, total_bytes, {} };
     }
   }
 
@@ -182,13 +186,14 @@ StreamWriteResult StreamBase::Write(
     if (!env->write_wrap_template()
              ->NewInstance(env->context())
              .ToLocal(&req_wrap_obj)) {
-      return StreamWriteResult { false, UV_EBUSY, nullptr, 0 };
+      return StreamWriteResult { false, UV_EBUSY, nullptr, 0, {} };
     }
     StreamReq::ResetObject(req_wrap_obj);
   }
 
   AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(GetAsyncWrap());
   WriteWrap* req_wrap = CreateWriteWrap(req_wrap_obj);
+  BaseObjectPtr<AsyncWrap> req_wrap_ptr(req_wrap->GetAsyncWrap());
 
   err = DoWrite(req_wrap, bufs, count, send_handle);
   bool async = err == 0;
@@ -200,13 +205,16 @@ StreamWriteResult StreamBase::Write(
 
   const char* msg = Error();
   if (msg != nullptr) {
-    req_wrap_obj->Set(env->context(),
-                      env->error_string(),
-                      OneByteString(env->isolate(), msg)).Check();
+    if (req_wrap_obj->Set(env->context(),
+                          env->error_string(),
+                          OneByteString(env->isolate(), msg)).IsNothing()) {
+      return StreamWriteResult { false, UV_EBUSY, nullptr, 0, {} };
+    }
     ClearError();
   }
 
-  return StreamWriteResult { async, err, req_wrap, total_bytes };
+  return StreamWriteResult {
+      async, err, req_wrap, total_bytes, std::move(req_wrap_ptr) };
 }
 
 template <typename OtherBase>
@@ -243,19 +251,44 @@ StreamBase* StreamBase::FromObject(v8::Local<v8::Object> obj) {
           StreamBase::kStreamBaseField));
 }
 
-void WriteWrap::SetAllocatedStorage(AllocatedBuffer&& storage) {
-  CHECK_NULL(storage_.data());
-  storage_ = std::move(storage);
+WriteWrap* WriteWrap::FromObject(v8::Local<v8::Object> req_wrap_obj) {
+  return static_cast<WriteWrap*>(StreamReq::FromObject(req_wrap_obj));
+}
+
+template <typename T, bool kIsWeak>
+WriteWrap* WriteWrap::FromObject(
+    const BaseObjectPtrImpl<T, kIsWeak>& base_obj) {
+  if (!base_obj) return nullptr;
+  return FromObject(base_obj->object());
+}
+
+ShutdownWrap* ShutdownWrap::FromObject(v8::Local<v8::Object> req_wrap_obj) {
+  return static_cast<ShutdownWrap*>(StreamReq::FromObject(req_wrap_obj));
+}
+
+template <typename T, bool kIsWeak>
+ShutdownWrap* ShutdownWrap::FromObject(
+    const BaseObjectPtrImpl<T, kIsWeak>& base_obj) {
+  if (!base_obj) return nullptr;
+  return FromObject(base_obj->object());
+}
+
+void WriteWrap::SetBackingStore(std::unique_ptr<v8::BackingStore> bs) {
+  CHECK(!backing_store_);
+  backing_store_ = std::move(bs);
 }
 
 void StreamReq::Done(int status, const char* error_str) {
   AsyncWrap* async_wrap = GetAsyncWrap();
   Environment* env = async_wrap->env();
   if (error_str != nullptr) {
-    async_wrap->object()->Set(env->context(),
-                              env->error_string(),
-                              OneByteString(env->isolate(), error_str))
-                              .Check();
+    v8::HandleScope handle_scope(env->isolate());
+    if (async_wrap->object()->Set(
+            env->context(),
+            env->error_string(),
+            OneByteString(env->isolate(), error_str)).IsNothing()) {
+      return;
+    }
   }
 
   OnDone(status);

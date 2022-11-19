@@ -4,7 +4,6 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "env.h"
-#include "allocated_buffer.h"
 #include "async_wrap.h"
 #include "node.h"
 #include "util.h"
@@ -19,12 +18,14 @@ class ShutdownWrap;
 class WriteWrap;
 class StreamBase;
 class StreamResource;
+class ExternalReferenceRegistry;
 
 struct StreamWriteResult {
   bool async;
   int err;
   WriteWrap* wrap;
   size_t bytes;
+  BaseObjectPtr<AsyncWrap> wrap_obj;
 };
 
 using JSMethodFunction = void(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -48,6 +49,8 @@ class StreamReq {
   virtual AsyncWrap* GetAsyncWrap() = 0;
   inline v8::Local<v8::Object> object();
 
+  // TODO(RaisinTen): Update the return type to a Maybe, so that we can indicate
+  // if there is a pending exception/termination.
   inline void Done(int status, const char* error_str = nullptr);
   inline void Dispose();
 
@@ -77,23 +80,33 @@ class ShutdownWrap : public StreamReq {
       StreamBase* stream,
       v8::Local<v8::Object> req_wrap_obj);
 
+  static inline ShutdownWrap* FromObject(v8::Local<v8::Object> req_wrap_obj);
+  template <typename T, bool kIsWeak>
+  static inline ShutdownWrap* FromObject(
+      const BaseObjectPtrImpl<T, kIsWeak>& base_obj);
+
   // Call stream()->EmitAfterShutdown() and dispose of this request wrap.
   void OnDone(int status) override;
 };
 
 class WriteWrap : public StreamReq {
  public:
-  inline void SetAllocatedStorage(AllocatedBuffer&& storage);
+  inline void SetBackingStore(std::unique_ptr<v8::BackingStore> bs);
 
   inline WriteWrap(
       StreamBase* stream,
       v8::Local<v8::Object> req_wrap_obj);
 
+  static inline WriteWrap* FromObject(v8::Local<v8::Object> req_wrap_obj);
+  template <typename T, bool kIsWeak>
+  static inline WriteWrap* FromObject(
+      const BaseObjectPtrImpl<T, kIsWeak>& base_obj);
+
   // Call stream()->EmitAfterWrite() and dispose of this request wrap.
   void OnDone(int status) override;
 
  private:
-  AllocatedBuffer storage_;
+  std::unique_ptr<v8::BackingStore> backing_store_;
 };
 
 
@@ -297,7 +310,7 @@ class StreamBase : public StreamResource {
 
   static void AddMethods(Environment* env,
                          v8::Local<v8::FunctionTemplate> target);
-
+  static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
   virtual bool IsAlive() = 0;
   virtual bool IsClosing() = 0;
   virtual bool IsIPCPipe();
@@ -315,6 +328,8 @@ class StreamBase : public StreamResource {
   // subclasses are also `BaseObject`s.
   Environment* stream_env() const { return env_; }
 
+  // TODO(RaisinTen): Update the return type to a Maybe, so that we can indicate
+  // if there is a pending exception/termination.
   // Shut down the current stream. This request can use an existing
   // ShutdownWrap object (that was created in JS), or a new one will be created.
   // Returns 1 in case of a synchronous completion, 0 in case of asynchronous
@@ -322,6 +337,8 @@ class StreamBase : public StreamResource {
   inline int Shutdown(
       v8::Local<v8::Object> req_wrap_obj = v8::Local<v8::Object>());
 
+  // TODO(RaisinTen): Update the return type to a Maybe, so that we can indicate
+  // if there is a pending exception/termination.
   // Write data to the current stream. This request can use an existing
   // WriteWrap object (that was created in JS), or a new one will be created.
   // This will first try to write synchronously using `DoTryWrite()`, then
@@ -412,6 +429,10 @@ class SimpleShutdownWrap : public ShutdownWrap, public OtherBase {
   SET_NO_MEMORY_INFO()
   SET_MEMORY_INFO_NAME(SimpleShutdownWrap)
   SET_SELF_SIZE(SimpleShutdownWrap)
+
+  bool IsNotIndicativeOfMemoryLeakAtExit() const override {
+    return OtherBase::IsNotIndicativeOfMemoryLeakAtExit();
+  }
 };
 
 template <typename OtherBase>
@@ -425,6 +446,10 @@ class SimpleWriteWrap : public WriteWrap, public OtherBase {
   SET_NO_MEMORY_INFO()
   SET_MEMORY_INFO_NAME(SimpleWriteWrap)
   SET_SELF_SIZE(SimpleWriteWrap)
+
+  bool IsNotIndicativeOfMemoryLeakAtExit() const override {
+    return OtherBase::IsNotIndicativeOfMemoryLeakAtExit();
+  }
 };
 
 }  // namespace node

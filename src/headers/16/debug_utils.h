@@ -41,11 +41,14 @@ void FWrite(FILE* file, const std::string& str);
 // from a provider type to a debug category.
 #define DEBUG_CATEGORY_NAMES(V)                                                \
   NODE_ASYNC_PROVIDER_TYPES(V)                                                 \
+  V(DIAGNOSTICS)                                                               \
   V(HUGEPAGES)                                                                 \
   V(INSPECTOR_SERVER)                                                          \
   V(INSPECTOR_PROFILER)                                                        \
   V(CODE_CACHE)                                                                \
-  V(WASI)
+  V(NGTCP2_DEBUG)                                                              \
+  V(WASI)                                                                      \
+  V(MKSNAPSHOT)
 
 enum class DebugCategory {
 #define V(name) name,

@@ -24,14 +24,7 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#if (__GNUC__ >= 8) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-#endif
 #include "v8.h"
-#if (__GNUC__ >= 8) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 #include <climits>
 #include <cstddef>
@@ -39,13 +32,14 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <functional>  // std::function
-#include <limits>
-#include <set>
-#include <string>
 #include <array>
+#include <limits>
+#include <memory>
+#include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #ifdef __GNUC__
 #define MUST_USE_RESULT __attribute__((warn_unused_result))
@@ -98,7 +92,7 @@ inline T MultiplyWithOverflowCheck(T a, T b);
 
 namespace per_process {
 // Tells whether the per-process V8::Initialize() is called and
-// if it is safe to call v8::Isolate::GetCurrent().
+// if it is safe to call v8::Isolate::TryGetCurrent().
 extern bool v8_initialized;
 }  // namespace per_process
 
@@ -331,6 +325,11 @@ constexpr size_t arraysize(const T (&)[N]) {
   return N;
 }
 
+template <typename T, size_t N>
+constexpr size_t strsize(const T (&)[N]) {
+  return N - 1;
+}
+
 // Allocates an array of member type T. For up to kStackStorageSize items,
 // the stack is used, otherwise malloc().
 template <typename T, size_t kStackStorageSize = 1024>
@@ -406,7 +405,7 @@ class MaybeStackBuffer {
     buf_[length] = T();
   }
 
-  // Make derefencing this object return nullptr.
+  // Make dereferencing this object return nullptr.
   // This method can be called multiple times throughout the lifetime of the
   // buffer, but once this has been called AllocateSufficientStorage() cannot
   // be used.
@@ -486,6 +485,10 @@ class Utf8Value : public MaybeStackBuffer<char> {
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
   inline std::string ToString() const { return std::string(out(), length()); }
+
+  inline bool operator==(const char* a) const {
+    return strcmp(out(), a) == 0;
+  }
 };
 
 class TwoByteValue : public MaybeStackBuffer<uint16_t> {
@@ -564,6 +567,11 @@ struct MallocedBuffer {
     size = new_size;
   }
 
+  void Realloc(size_t new_size) {
+    Truncate(new_size);
+    data = UncheckedRealloc(data, new_size);
+  }
+
   inline bool is_empty() const { return data == nullptr; }
 
   MallocedBuffer() : data(nullptr), size(0) {}
@@ -593,6 +601,15 @@ class NonCopyableMaybe {
 
   bool IsEmpty() const {
     return empty_;
+  }
+
+  const T* get() const {
+    return empty_ ? nullptr : &value_;
+  }
+
+  const T* operator->() const {
+    CHECK(!empty_);
+    return &value_;
   }
 
   T&& Release() {
@@ -676,11 +693,9 @@ inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
   do {                                                                         \
     v8::Isolate* isolate = target->GetIsolate();                               \
     v8::Local<v8::String> constant_name =                                      \
-        v8::String::NewFromUtf8(isolate, name, v8::NewStringType::kNormal)     \
-            .ToLocalChecked();                                                 \
+        v8::String::NewFromUtf8(isolate, name).ToLocalChecked();               \
     v8::Local<v8::String> constant_value =                                     \
-        v8::String::NewFromUtf8(isolate, constant, v8::NewStringType::kNormal) \
-            .ToLocalChecked();                                                 \
+        v8::String::NewFromUtf8(isolate, constant).ToLocalChecked();           \
     v8::PropertyAttribute constant_attributes =                                \
         static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontDelete);     \
     target                                                                     \
@@ -758,6 +773,7 @@ class PersistentToLocal {
   template <class TypeName>
   static inline v8::Local<TypeName> Strong(
       const v8::PersistentBase<TypeName>& persistent) {
+    DCHECK(!persistent.IsWeak());
     return *reinterpret_cast<v8::Local<TypeName>*>(
         const_cast<v8::PersistentBase<TypeName>*>(&persistent));
   }
@@ -797,6 +813,11 @@ std::unique_ptr<T> static_unique_pointer_cast(std::unique_ptr<U>&& ptr) {
   return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
 }
 
+#define MAYBE_FIELD_PTR(ptr, field) ptr == nullptr ? nullptr : &(ptr->field)
+
+// Returns a non-zero code if it fails to open or read the file,
+// aborts if it fails to close the file.
+int ReadFileSync(std::string* result, const char* path);
 }  // namespace node
 
 #endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS

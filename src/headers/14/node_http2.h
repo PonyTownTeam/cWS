@@ -116,7 +116,6 @@ using Nghttp2SessionCallbacksPointer =
 
 struct Http2HeadersTraits {
   typedef nghttp2_nv nv_t;
-  static const uint8_t kNoneFlag = NGHTTP2_NV_FLAG_NONE;
 };
 
 struct Http2RcBufferPointerTraits {
@@ -145,12 +144,12 @@ using Http2Headers = NgHeaders<Http2HeadersTraits>;
 using Http2RcBufferPointer = NgRcBufPointer<Http2RcBufferPointerTraits>;
 
 struct NgHttp2StreamWrite : public MemoryRetainer {
-  WriteWrap* req_wrap = nullptr;
+  BaseObjectPtr<AsyncWrap> req_wrap;
   uv_buf_t buf;
 
   inline explicit NgHttp2StreamWrite(uv_buf_t buf_) : buf(buf_) {}
-  inline NgHttp2StreamWrite(WriteWrap* req, uv_buf_t buf_) :
-      req_wrap(req), buf(buf_) {}
+  inline NgHttp2StreamWrite(BaseObjectPtr<AsyncWrap> req_wrap, uv_buf_t buf_) :
+      req_wrap(std::move(req_wrap)), buf(buf_) {}
 
   void MemoryInfo(MemoryTracker* tracker) const override;
   SET_MEMORY_INFO_NAME(NgHttp2StreamWrite)
@@ -695,10 +694,13 @@ class Http2Session : public AsyncWrap,
   // The JavaScript API
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Consume(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Receive(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Destroy(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Settings(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Request(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetNextStreamID(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SetLocalWindowSize(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Goaway(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void UpdateChunksSent(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void RefreshState(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -1115,6 +1117,7 @@ class Origins {
   V(NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE)                                       \
   V(NGHTTP2_ERR_INVALID_ARGUMENT)                                              \
   V(NGHTTP2_ERR_STREAM_CLOSED)                                                 \
+  V(NGHTTP2_ERR_NOMEM)                                                         \
   V(STREAM_OPTION_EMPTY_PAYLOAD)                                               \
   V(STREAM_OPTION_GET_TRAILERS)
 

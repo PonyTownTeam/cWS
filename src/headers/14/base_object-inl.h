@@ -146,6 +146,13 @@ void BaseObject::ClearWeak() {
   persistent_handle_.ClearWeak();
 }
 
+bool BaseObject::IsWeakOrDetached() const {
+  if (persistent_handle_.IsWeak()) return true;
+
+  if (!has_pointer_data()) return false;
+  const PointerData* pd = const_cast<BaseObject*>(this)->pointer_data();
+  return pd->wants_weak_jsobj || pd->is_detached;
+}
 
 v8::Local<v8::FunctionTemplate>
 BaseObject::MakeLazilyInitializedJSTemplate(Environment* env) {
@@ -200,7 +207,7 @@ void BaseObject::decrease_refcount() {
   unsigned int new_refcount = --metadata->strong_ptr_count;
   if (new_refcount == 0) {
     if (metadata->is_detached) {
-      delete this;
+      OnGCCollect();
     } else if (metadata->wants_weak_jsobj && !persistent_handle_.IsEmpty()) {
       MakeWeak();
     }

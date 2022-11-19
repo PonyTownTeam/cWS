@@ -49,14 +49,6 @@ inline uv_loop_t* IsolateData::event_loop() const {
   return event_loop_;
 }
 
-inline bool IsolateData::uses_node_allocator() const {
-  return uses_node_allocator_;
-}
-
-inline v8::ArrayBuffer::Allocator* IsolateData::allocator() const {
-  return allocator_;
-}
-
 inline NodeArrayBufferAllocator* IsolateData::node_allocator() const {
   return node_allocator_;
 }
@@ -113,8 +105,36 @@ inline AliasedFloat64Array& AsyncHooks::async_ids_stack() {
   return async_ids_stack_;
 }
 
-inline v8::Local<v8::Array> AsyncHooks::execution_async_resources() {
-  return PersistentToLocal::Strong(execution_async_resources_);
+v8::Local<v8::Array> AsyncHooks::js_execution_async_resources() {
+  if (UNLIKELY(js_execution_async_resources_.IsEmpty())) {
+    js_execution_async_resources_.Reset(
+        env()->isolate(), v8::Array::New(env()->isolate()));
+  }
+  return PersistentToLocal::Strong(js_execution_async_resources_);
+}
+
+v8::Local<v8::Object> AsyncHooks::native_execution_async_resource(size_t i) {
+  if (i >= native_execution_async_resources_.size()) return {};
+  return PersistentToLocal::Strong(native_execution_async_resources_[i]);
+}
+
+inline void AsyncHooks::SetJSPromiseHooks(v8::Local<v8::Function> init,
+                                          v8::Local<v8::Function> before,
+                                          v8::Local<v8::Function> after,
+                                          v8::Local<v8::Function> resolve) {
+  js_promise_hooks_[0].Reset(env()->isolate(), init);
+  js_promise_hooks_[1].Reset(env()->isolate(), before);
+  js_promise_hooks_[2].Reset(env()->isolate(), after);
+  js_promise_hooks_[3].Reset(env()->isolate(), resolve);
+  for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
+    if (it->IsEmpty()) {
+      it = contexts_.erase(it);
+      it--;
+      continue;
+    }
+    PersistentToLocal::Weak(env()->isolate(), *it)
+        ->SetPromiseHooks(init, before, after, resolve);
+  }
 }
 
 inline v8::Local<v8::String> AsyncHooks::provider_string(int idx) {
@@ -132,9 +152,7 @@ inline Environment* AsyncHooks::env() {
 // Remember to keep this code aligned with pushAsyncContext() in JS.
 inline void AsyncHooks::push_async_context(double async_id,
                                            double trigger_async_id,
-                                           v8::Local<v8::Value> resource) {
-  v8::HandleScope handle_scope(env()->isolate());
-
+                                           v8::Local<v8::Object> resource) {
   // Since async_hooks is experimental, do only perform the check
   // when async_hooks is enabled.
   if (fields_[kCheck] > 0) {
@@ -151,8 +169,19 @@ inline void AsyncHooks::push_async_context(double async_id,
   async_id_fields_[kExecutionAsyncId] = async_id;
   async_id_fields_[kTriggerAsyncId] = trigger_async_id;
 
-  auto resources = execution_async_resources();
-  USE(resources->Set(env()->context(), offset, resource));
+#ifdef DEBUG
+  for (uint32_t i = offset; i < native_execution_async_resources_.size(); i++)
+    CHECK(native_execution_async_resources_[i].IsEmpty());
+#endif
+
+  // When this call comes from JS (as a way of increasing the stack size),
+  // `resource` will be empty, because JS caches these values anyway, and
+  // we should avoid creating strong global references that might keep
+  // these JS resource objects alive longer than necessary.
+  if (!resource.IsEmpty()) {
+    native_execution_async_resources_.resize(offset + 1);
+    native_execution_async_resources_[offset].Reset(env()->isolate(), resource);
+  }
 }
 
 // Remember to keep this code aligned with popAsyncContext() in JS.
@@ -185,21 +214,89 @@ inline bool AsyncHooks::pop_async_context(double async_id) {
   async_id_fields_[kTriggerAsyncId] = async_ids_stack_[2 * offset + 1];
   fields_[kStackLength] = offset;
 
-  auto resources = execution_async_resources();
-  USE(resources->Delete(env()->context(), offset));
+  if (LIKELY(offset < native_execution_async_resources_.size() &&
+             !native_execution_async_resources_[offset].IsEmpty())) {
+#ifdef DEBUG
+    for (uint32_t i = offset + 1;
+         i < native_execution_async_resources_.size();
+         i++) {
+      CHECK(native_execution_async_resources_[i].IsEmpty());
+    }
+#endif
+    native_execution_async_resources_.resize(offset);
+    if (native_execution_async_resources_.size() <
+            native_execution_async_resources_.capacity() / 2 &&
+        native_execution_async_resources_.size() > 16) {
+      native_execution_async_resources_.shrink_to_fit();
+    }
+  }
+
+  if (UNLIKELY(js_execution_async_resources()->Length() > offset)) {
+    v8::HandleScope handle_scope(env()->isolate());
+    USE(js_execution_async_resources()->Set(
+        env()->context(),
+        env()->length_string(),
+        v8::Integer::NewFromUnsigned(env()->isolate(), offset)));
+  }
 
   return fields_[kStackLength] > 0;
 }
 
-// Keep in sync with clearAsyncIdStack in lib/internal/async_hooks.js.
-inline void AsyncHooks::clear_async_id_stack() {
-  auto isolate = env()->isolate();
+void AsyncHooks::clear_async_id_stack() {
+  v8::Isolate* isolate = env()->isolate();
   v8::HandleScope handle_scope(isolate);
-  execution_async_resources_.Reset(isolate, v8::Array::New(isolate));
+  if (!js_execution_async_resources_.IsEmpty()) {
+    USE(PersistentToLocal::Strong(js_execution_async_resources_)->Set(
+        env()->context(),
+        env()->length_string(),
+        v8::Integer::NewFromUnsigned(isolate, 0)));
+  }
+  native_execution_async_resources_.clear();
+  native_execution_async_resources_.shrink_to_fit();
 
   async_id_fields_[kExecutionAsyncId] = 0;
   async_id_fields_[kTriggerAsyncId] = 0;
   fields_[kStackLength] = 0;
+}
+
+inline void AsyncHooks::AddContext(v8::Local<v8::Context> ctx) {
+  ctx->SetPromiseHooks(
+    js_promise_hooks_[0].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[0]),
+    js_promise_hooks_[1].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[1]),
+    js_promise_hooks_[2].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[2]),
+    js_promise_hooks_[3].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[3]));
+
+  size_t id = contexts_.size();
+  contexts_.resize(id + 1);
+  contexts_[id].Reset(env()->isolate(), ctx);
+  contexts_[id].SetWeak();
+}
+
+inline void AsyncHooks::RemoveContext(v8::Local<v8::Context> ctx) {
+  v8::Isolate* isolate = env()->isolate();
+  v8::HandleScope handle_scope(isolate);
+  for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
+    if (it->IsEmpty()) {
+      it = contexts_.erase(it);
+      it--;
+      continue;
+    }
+    v8::Local<v8::Context> saved_context =
+      PersistentToLocal::Weak(isolate, *it);
+    if (saved_context == ctx) {
+      it->Reset();
+      contexts_.erase(it);
+      break;
+    }
+  }
 }
 
 // The DefaultTriggerAsyncIdScope(AsyncWrap*) constructor is defined in
@@ -295,6 +392,8 @@ inline void Environment::AssignToContext(v8::Local<v8::Context> context,
 #if HAVE_INSPECTOR
   inspector_agent()->ContextCreated(context, info);
 #endif  // HAVE_INSPECTOR
+
+  this->async_hooks()->AddContext(context);
 }
 
 inline Environment* Environment::GetCurrent(v8::Isolate* isolate) {
@@ -349,7 +448,7 @@ inline T* Environment::GetBindingData(v8::Local<v8::Context> context) {
       context->GetAlignedPointerFromEmbedderData(
           ContextEmbedderIndex::kBindingListIndex));
   DCHECK_NOT_NULL(map);
-  auto it = map->find(T::binding_data_name);
+  auto it = map->find(T::type_name);
   if (UNLIKELY(it == map->end())) return nullptr;
   T* result = static_cast<T*>(it->second.get());
   DCHECK_NOT_NULL(result);
@@ -368,7 +467,7 @@ inline T* Environment::AddBindingData(
       context->GetAlignedPointerFromEmbedderData(
           ContextEmbedderIndex::kBindingListIndex));
   DCHECK_NOT_NULL(map);
-  auto result = map->emplace(T::binding_data_name, item);
+  auto result = map->emplace(T::type_name, item);
   CHECK(result.second);
   DCHECK_EQ(GetBindingData<T>(context), item.get());
   return item.get();
@@ -504,6 +603,14 @@ inline bool Environment::abort_on_uncaught_exception() const {
   return options_->abort_on_uncaught_exception;
 }
 
+inline void Environment::set_force_context_aware(bool value) {
+  options_->force_context_aware = value;
+}
+
+inline bool Environment::force_context_aware() const {
+  return options_->force_context_aware;
+}
+
 inline void Environment::set_abort_on_uncaught_exception(bool value) {
   options_->abort_on_uncaught_exception = value;
 }
@@ -595,6 +702,22 @@ inline const std::vector<std::string>& Environment::exec_argv() {
 
 inline const std::string& Environment::exec_path() const {
   return exec_path_;
+}
+
+inline std::string Environment::GetCwd() {
+  char cwd[PATH_MAX_BYTES];
+  size_t size = PATH_MAX_BYTES;
+  const int err = uv_cwd(cwd, &size);
+
+  if (err == 0) {
+    CHECK_GT(size, 0);
+    return cwd;
+  }
+
+  // This can fail if the cwd is deleted. In that case, fall back to
+  // exec_path.
+  const std::string& exec_path = exec_path_;
+  return exec_path.substr(0, exec_path.find_last_of(kPathSeparator));
 }
 
 #if HAVE_INSPECTOR
@@ -767,6 +890,15 @@ inline bool Environment::is_main_thread() const {
   return worker_context() == nullptr;
 }
 
+inline bool Environment::no_native_addons() const {
+  return (flags_ & EnvironmentFlags::kNoNativeAddons) ||
+          !options_->allow_native_addons;
+}
+
+inline bool Environment::should_not_register_esm_loader() const {
+  return flags_ & EnvironmentFlags::kNoRegisterESMLoader;
+}
+
 inline bool Environment::owns_process_state() const {
   return flags_ & EnvironmentFlags::kOwnsProcessState;
 }
@@ -775,12 +907,28 @@ inline bool Environment::owns_inspector() const {
   return flags_ & EnvironmentFlags::kOwnsInspector;
 }
 
+inline bool Environment::tracks_unmanaged_fds() const {
+  return flags_ & EnvironmentFlags::kTrackUnmanagedFds;
+}
+
+inline bool Environment::hide_console_windows() const {
+  return flags_ & EnvironmentFlags::kHideConsoleWindows;
+}
+
 bool Environment::filehandle_close_warning() const {
   return emit_filehandle_warning_;
 }
 
 void Environment::set_filehandle_close_warning(bool on) {
   emit_filehandle_warning_ = on;
+}
+
+void Environment::set_source_maps_enabled(bool on) {
+  source_maps_enabled_ = on;
+}
+
+bool Environment::source_maps_enabled() const {
+  return source_maps_enabled_;
 }
 
 inline uint64_t Environment::thread_id() const {
@@ -828,6 +976,11 @@ inline std::list<node_module>* Environment::extra_linked_bindings() {
 inline node_module* Environment::extra_linked_bindings_head() {
   return extra_linked_bindings_.size() > 0 ?
       &extra_linked_bindings_.front() : nullptr;
+}
+
+inline node_module* Environment::extra_linked_bindings_tail() {
+  return extra_linked_bindings_.size() > 0 ?
+      &extra_linked_bindings_.back() : nullptr;
 }
 
 inline const Mutex& Environment::extra_linked_bindings_mutex() const {
@@ -979,7 +1132,28 @@ inline void Environment::SetInstanceMethod(v8::Local<v8::FunctionTemplate> that,
   t->SetClassName(name_string);
 }
 
-void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
+inline void Environment::SetConstructorFunction(
+    v8::Local<v8::Object> that,
+    const char* name,
+    v8::Local<v8::FunctionTemplate> tmpl,
+    SetConstructorFunctionFlag flag) {
+  SetConstructorFunction(that, OneByteString(isolate(), name), tmpl, flag);
+}
+
+inline void Environment::SetConstructorFunction(
+    v8::Local<v8::Object> that,
+    v8::Local<v8::String> name,
+    v8::Local<v8::FunctionTemplate> tmpl,
+    SetConstructorFunctionFlag flag) {
+  if (LIKELY(flag == SetConstructorFunctionFlag::SET_CLASS_NAME))
+    tmpl->SetClassName(name);
+  that->Set(
+      context(),
+      name,
+      tmpl->GetFunction(context()).ToLocalChecked()).Check();
+}
+
+void Environment::AddCleanupHook(CleanupCallback fn, void* arg) {
   auto insertion_info = cleanup_hooks_.emplace(CleanupHookCallback {
     fn, arg, cleanup_hook_counter_++
   });
@@ -987,7 +1161,7 @@ void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
   CHECK_EQ(insertion_info.second, true);
 }
 
-void Environment::RemoveCleanupHook(void (*fn)(void*), void* arg) {
+void Environment::RemoveCleanupHook(CleanupCallback fn, void* arg) {
   CleanupHookCallback search { fn, arg, 0 };
   cleanup_hooks_.erase(search);
 }

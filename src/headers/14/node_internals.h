@@ -39,11 +39,6 @@
 #include <string>
 #include <vector>
 
-// Custom constants used by both node_constants.cc and node_zlib.cc
-#define Z_MIN_WINDOWBITS 8
-#define Z_MAX_WINDOWBITS 15
-#define Z_DEFAULT_WINDOWBITS 15
-
 struct sockaddr;
 
 namespace node {
@@ -99,10 +94,6 @@ std::string GetHumanReadableProcessName();
 
 void InitializeContextRuntime(v8::Local<v8::Context>);
 bool InitializePrimordials(v8::Local<v8::Context> context);
-
-namespace task_queue {
-void PromiseRejectCallback(v8::PromiseRejectMessage message);
-}  // namespace task_queue
 
 class NodeArrayBufferAllocator : public ArrayBufferAllocator {
  public:
@@ -367,6 +358,10 @@ class DiagnosticFilename {
   std::string filename_;
 };
 
+namespace heap {
+bool WriteSnapshot(v8::Isolate* isolate, const char* filename);
+}
+
 class TraceEventScope {
  public:
   TraceEventScope(const char* category,
@@ -397,6 +392,8 @@ BaseObjectPtr<AsyncWrap> CreateHeapSnapshotStream(
 namespace fs {
 std::string Basename(const std::string& str, const std::string& extension);
 }  // namespace fs
+
+node_module napi_module_to_node_module(const napi_module* mod);
 
 }  // namespace node
 

@@ -38,6 +38,7 @@ namespace node {
   V(ELDHISTOGRAM)                                                             \
   V(FILEHANDLE)                                                               \
   V(FILEHANDLECLOSEREQ)                                                       \
+  V(FIXEDSIZEBLOBCOPY)                                                        \
   V(FSEVENTWRAP)                                                              \
   V(FSREQCALLBACK)                                                            \
   V(FSREQPROMISE)                                                             \
@@ -137,6 +138,10 @@ class AsyncWrap : public BaseObject {
   static void GetAsyncId(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PushAsyncContext(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PopAsyncContext(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void ExecutionAsyncResource(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void ClearAsyncIdStack(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
   static void AsyncReset(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void GetProviderType(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void QueueDestroyAsyncId(

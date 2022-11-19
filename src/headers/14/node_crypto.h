@@ -420,7 +420,7 @@ class KeyObjectData {
   KeyType GetKeyType() const;
 
   // These functions allow unprotected access to the raw key material and should
-  // only be used to implement cryptograohic operations requiring the key.
+  // only be used to implement cryptographic operations requiring the key.
   ManagedEVPPKey GetAsymmetricKey() const;
   const char* GetSymmetricKey() const;
   size_t GetSymmetricKeySize() const;
@@ -447,8 +447,7 @@ class KeyObjectData {
 
 class KeyObjectHandle : public BaseObject {
  public:
-  static v8::Local<v8::Function> Initialize(Environment* env,
-                                            v8::Local<v8::Object> target);
+  static v8::Local<v8::Function> Initialize(Environment* env);
 
   static v8::MaybeLocal<v8::Object> Create(Environment* env,
                                            std::shared_ptr<KeyObjectData> data);
@@ -520,7 +519,9 @@ class NativeKeyObject : public BaseObject {
                   v8::Local<v8::Object> wrap,
                   const std::shared_ptr<KeyObjectData>& handle_data)
     : BaseObject(env, wrap),
-      handle_data_(handle_data) {}
+      handle_data_(handle_data) {
+    MakeWeak();
+  }
 
   std::shared_ptr<KeyObjectData> handle_data_;
 };
