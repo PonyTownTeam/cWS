@@ -8,40 +8,28 @@
 #if NODE_MAJOR_VERSION>=10
 #define NODE_WANT_INTERNALS 1
 
-#if NODE_MAJOR_VERSION==12
-  #include "headers/12/tls_wrap.h"
-  #include "headers/12/base_object-inl.h"
-#endif
-
-#if NODE_MAJOR_VERSION==14
-  #include "headers/14/tls_wrap.h"
-  #include "headers/14/base_object-inl.h"
-#endif
-
 #if NODE_MAJOR_VERSION==16
+  #include "headers/16/tcp_wrap.h"
   #include "headers/16/crypto/crypto_tls.h"
   #include "headers/16/base_object-inl.h"
 #endif
 
 #if NODE_MAJOR_VERSION==18
+  #include "headers/18/tcp_wrap.h"
   #include "headers/18/crypto/crypto_tls.h"
   #include "headers/18/base_object-inl.h"
 #endif
 
 #if NODE_MAJOR_VERSION==19
+  #include "headers/19/tcp_wrap.h"
   #include "headers/19/crypto/crypto_tls.h"
   #include "headers/19/base_object-inl.h"
 #endif
 
 using BaseObject = node::BaseObject;
 
-#if NODE_MAJOR_VERSION>=15
-  using TLSWrap = node::crypto::TLSWrap;
-  class TLSWrapSSLGetter : public node::crypto::TLSWrap {
-#else
-  using TLSWrap = node::TLSWrap;
-  class TLSWrapSSLGetter : public node::TLSWrap {
-#endif
+using TLSWrap = node::crypto::TLSWrap;
+class TLSWrapSSLGetter : public node::crypto::TLSWrap {
 public:
     void setSSL(const v8::FunctionCallbackInfo<v8::Value> &info){
         v8::Isolate* isolate = info.GetIsolate();
@@ -210,11 +198,7 @@ inline Local<Value> wrapMessage(const char *message, size_t length,
     #endif
   }
 
-  #if NODE_MAJOR_VERSION >= 13
-    return (Local<Value>)String::NewFromUtf8(isolate, message, NewStringType::kNormal, length).ToLocalChecked();
-  #else
-    return (Local<Value>)String::NewFromUtf8(isolate, message, String::kNormalString, length);
-  #endif
+  return (Local<Value>)String::NewFromUtf8(isolate, message, NewStringType::kNormal, length).ToLocalChecked();
 }
 
 template <bool isServer>
@@ -258,28 +242,29 @@ void getAddress(const FunctionCallbackInfo<Value> &args) {
       unwrapSocket<isServer>(args[0].As<External>())->getAddress();
   Local<Array> array = Array::New(args.GetIsolate(), 3);
 
-  #if NODE_MAJOR_VERSION >= 13
-    array->Set(args.GetIsolate()->GetCurrentContext(), 0, Integer::New(args.GetIsolate(), address.port));
-    array->Set(args.GetIsolate()->GetCurrentContext(), 1, String::NewFromUtf8(args.GetIsolate(), address.address).ToLocalChecked());
-    array->Set(args.GetIsolate()->GetCurrentContext(), 2, String::NewFromUtf8(args.GetIsolate(), address.family).ToLocalChecked());
-  #else
-    array->Set(0, Integer::New(args.GetIsolate(), address.port));
-    array->Set(1, String::NewFromUtf8(args.GetIsolate(), address.address));
-    array->Set(2, String::NewFromUtf8(args.GetIsolate(), address.family));
-  #endif
+  array->Set(args.GetIsolate()->GetCurrentContext(), 0, Integer::New(args.GetIsolate(), address.port));
+  array->Set(args.GetIsolate()->GetCurrentContext(), 1, String::NewFromUtf8(args.GetIsolate(), address.address).ToLocalChecked());
+  array->Set(args.GetIsolate()->GetCurrentContext(), 2, String::NewFromUtf8(args.GetIsolate(), address.family).ToLocalChecked());
 
   args.GetReturnValue().Set(array);
 }
 
-uv_handle_t *getTcpHandle(void *handleWrap) {
-  volatile char *memory = (volatile char *)handleWrap;
-  for (volatile uv_handle_t *tcpHandle = (volatile uv_handle_t *)memory;
-       tcpHandle->type != UV_TCP || tcpHandle->data != handleWrap ||
-       tcpHandle->loop != uv_default_loop();
-       tcpHandle = (volatile uv_handle_t *)memory) {
-    memory++;
+uv_handle_t *getTcpHandle(Local<Object> object) {
+  node::TCPWrap *wrap;
+  uv_handle_t *handle;
+
+  for (int i = 0; i < 0xf; i++) {
+    // for older versions of Node.js, the internal object is located at index 0
+    // while on Node.js 16.18+ & 18.13+, the index is 1
+    wrap = (node::TCPWrap *)(object->GetAlignedPointerFromInternalField(i));
+    handle = (uv_handle_t *)&wrap->handle_;
+    // check whether the object is the handle
+    if (handle->type == UV_TCP && handle->data == wrap && handle->loop == uv_default_loop()) {
+      return handle;
+    }
   }
-  return (uv_handle_t *)memory;
+
+  return nullptr;
 }
 
 struct SendCallbackData {
@@ -367,8 +352,7 @@ void transfer(const FunctionCallbackInfo<Value> &args) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
 
-    uv_fileno((handle = getTcpHandle(
-                   args[0]->ToObject(context).ToLocalChecked()->GetAlignedPointerFromInternalField(0))),
+    uv_fileno((handle = getTcpHandle(args[0]->ToObject(context).ToLocalChecked())),
               (uv_os_fd_t *)&ticket->fd);
   } else {
     ticket->fd = args[0].As<Integer>()->Value();
@@ -624,13 +608,8 @@ void getSSLContext(const FunctionCallbackInfo<Value> &args) {
     Isolate* isolate = args.GetIsolate();
     if(args.Length() < 1 || !args[0]->IsObject()){
 
-      #if NODE_MAJOR_VERSION >= 13
-        isolate->ThrowException(Exception::TypeError(
-          String::NewFromUtf8(isolate, "Error: One object expected").ToLocalChecked()));
-      #else
-        isolate->ThrowException(Exception::TypeError(
-          String::NewFromUtf8(isolate, "Error: One object expected")));
-      #endif
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Error: One object expected").ToLocalChecked()));
 
       return;
     }
@@ -638,14 +617,9 @@ void getSSLContext(const FunctionCallbackInfo<Value> &args) {
     Local<Context> context = isolate->GetCurrentContext();
     Local<Object> obj = args[0]->ToObject(context).ToLocalChecked();
 
-    #if NODE_MAJOR_VERSION < 10
-      Local<Value> ext = obj->Get(String::NewFromUtf8(isolate, "_external"));
-      args.GetReturnValue().Set(ext);
-    #else
-      TLSWrapSSLGetter* tw;
-      ASSIGN_OR_RETURN_UNWRAP(&tw, obj);
-      tw->setSSL(args);
-    #endif
+    TLSWrapSSLGetter* tw;
+    ASSIGN_OR_RETURN_UNWRAP(&tw, obj);
+    tw->setSSL(args);
 }
 
 void setNoop(const FunctionCallbackInfo<Value> &args) {
@@ -692,10 +666,6 @@ struct Namespace {
     NODE_SET_METHOD(group, "terminate", terminateGroup<isServer>);
     NODE_SET_METHOD(group, "broadcast", broadcast<isServer>);
 
-    #if NODE_MAJOR_VERSION >= 13
-      object->Set(isolate->GetCurrentContext(), String::NewFromUtf8(isolate, "group").ToLocalChecked(), group);
-    #else
-      object->Set(String::NewFromUtf8(isolate, "group"), group);
-    #endif
+    object->Set(isolate->GetCurrentContext(), String::NewFromUtf8(isolate, "group").ToLocalChecked(), group);
   }
 };

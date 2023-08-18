@@ -15,7 +15,6 @@ class ConnectionWrap : public LibuvStreamWrap {
   static void OnConnection(uv_stream_t* handle, int status);
   static void AfterConnect(uv_connect_t* req, int status);
 
- protected:
   ConnectionWrap(Environment* env,
                  v8::Local<v8::Object> object,
                  ProviderType provider);
