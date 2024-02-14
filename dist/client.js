@@ -48,9 +48,7 @@ class WebSocket {
     send(message) {
         // this check is needed to ensure the socket isn't closed
         if (this.external) {
-            // at least the initial message is string, binary afterwards
-            const opCode = typeof message === 'string' ? 1 : 2;
-            server.send(this.external, message, opCode, null, false);
+            server.send(this.external, message, 2, null, false);
         }
     }
     ping(message) {
