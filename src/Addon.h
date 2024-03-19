@@ -5,7 +5,7 @@
 #include <uv.h>
 #include <cstring>
 
-#if NODE_MAJOR_VERSION>=10
+#define HAVE_OPENSSL 1
 #define NODE_WANT_INTERNALS 1
 
 #if NODE_MAJOR_VERSION==16
@@ -20,10 +20,10 @@
   #include "headers/18/base_object-inl.h"
 #endif
 
-#if NODE_MAJOR_VERSION==19
-  #include "headers/19/tcp_wrap.h"
-  #include "headers/19/crypto/crypto_tls.h"
-  #include "headers/19/base_object-inl.h"
+#if NODE_MAJOR_VERSION==20
+  #include "headers/20/tcp_wrap.h"
+  #include "headers/20/crypto/crypto_tls.h"
+  #include "headers/20/base_object-inl.h"
 #endif
 
 using BaseObject = node::BaseObject;
@@ -74,7 +74,6 @@ public:
 #endif
 
  #undef NODE_WANT_INTERNALS
-#endif
 
 using namespace std;
 using namespace v8;
