@@ -248,24 +248,6 @@ void getAddress(const FunctionCallbackInfo<Value> &args) {
   args.GetReturnValue().Set(array);
 }
 
-uv_handle_t *getTcpHandle(Local<Object> object) {
-  node::TCPWrap *wrap;
-  uv_handle_t *handle;
-
-  for (int i = 0; i < 0xf; i++) {
-    // for older versions of Node.js, the internal object is located at index 0
-    // while on Node.js 16.18+ & 18.13+, the index is 1
-    wrap = (node::TCPWrap *)(object->GetAlignedPointerFromInternalField(i));
-    handle = (uv_handle_t *)&wrap->handle_;
-    // check whether the object is the handle
-    if (handle->type == UV_TCP && handle->data == wrap && handle->loop == uv_default_loop()) {
-      return handle;
-    }
-  }
-
-  return nullptr;
-}
-
 struct SendCallbackData {
   Persistent<Function> jsCallback;
   Isolate *isolate;
@@ -350,9 +332,11 @@ void transfer(const FunctionCallbackInfo<Value> &args) {
   if (args[0]->IsObject()) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-
-    uv_fileno((handle = getTcpHandle(args[0]->ToObject(context).ToLocalChecked())),
-              (uv_os_fd_t *)&ticket->fd);
+    Local<Object> arg0 = args[0]->ToObject(context).ToLocalChecked();
+    int index = arg0->InternalFieldCount() >= 4 ? 1 : 0;
+    auto wrap = (node::TCPWrap *)arg0->GetAlignedPointerFromInternalField(index);
+    handle = wrap->GetHandle();
+    uv_fileno(handle, (uv_os_fd_t *)&ticket->fd);
   } else {
     ticket->fd = args[0].As<Integer>()->Value();
   }
