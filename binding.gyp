@@ -81,7 +81,7 @@
                             'outputs': [
                                 'cws'
                             ],
-                            'action': ['copy', '<@(PRODUCT_DIR)/cws.node', 'dist/bindings/cws_<!@(node -p process.platform)_<!@(node -p process.versions.modules).node']
+                            'action': ['<@(module_root_dir)/copy', '<@(PRODUCT_DIR)/cws.node', 'dist/bindings/cws_<!@(node -p process.platform)_<!@(node -p process.versions.modules).node']
                         }
                     ]}
                  ]
