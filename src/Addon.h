@@ -8,12 +8,6 @@
 #define HAVE_OPENSSL 1
 #define NODE_WANT_INTERNALS 1
 
-#if NODE_MAJOR_VERSION==16
-  #include "headers/16/tcp_wrap.h"
-  #include "headers/16/crypto/crypto_tls.h"
-  #include "headers/16/base_object-inl.h"
-#endif
-
 #if NODE_MAJOR_VERSION==18
   #include "headers/18/tcp_wrap.h"
   #include "headers/18/crypto/crypto_tls.h"
@@ -24,6 +18,12 @@
   #include "headers/20/tcp_wrap.h"
   #include "headers/20/crypto/crypto_tls.h"
   #include "headers/20/base_object-inl.h"
+#endif
+
+#if NODE_MAJOR_VERSION==22
+  #include "headers/22/tcp_wrap.h"
+  #include "headers/22/crypto/crypto_tls.h"
+  #include "headers/22/base_object-inl.h"
 #endif
 
 using BaseObject = node::BaseObject;
@@ -45,32 +45,15 @@ public:
 
 // Fix windows not resolved symbol issue
 #if defined(_MSC_VER)
-  #if NODE_MAJOR_VERSION>10
-    [[noreturn]] void node::Assert(const node::AssertionInfo& info) {
-      char name[1024];
-      char title[1024] = "Node.js";
-      uv_get_process_title(title, sizeof(title));
-      snprintf(name, sizeof(name), "%s[%d]", title, uv_os_getpid());
-      fprintf(stderr, "%s: Assertion failed.\n", name);
-      fflush(stderr);
-      ABORT_NO_BACKTRACE();
-    }
-  #else
-    [[noreturn]] void node::Assert(const char* const (*args)[4]) {
-      auto filename = (*args)[0];
-      auto linenum = (*args)[1];
-      auto message = (*args)[2];
-      auto function = (*args)[3];
-      char name[1024];
-      char title[1024] = "Node.js";
-      uv_get_process_title(title, sizeof(title));
-      snprintf(name, sizeof(name), "%s[%d]", title, uv_os_getpid());
-      fprintf(stderr, "%s: %s:%s:%s%s Assertion `%s' failed.\n",
-              name, filename, linenum, function, *function ? ":" : "", message);
-      fflush(stderr);
-      ABORT_NO_BACKTRACE();
-    }
-  #endif
+  [[noreturn]] void node::Assert(const node::AssertionInfo& info) {
+    char name[1024];
+    char title[1024] = "Node.js";
+    uv_get_process_title(title, sizeof(title));
+    snprintf(name, sizeof(name), "%s[%d]", title, uv_os_getpid());
+    fprintf(stderr, "%s: Assertion failed.\n", name);
+    fflush(stderr);
+    ABORT_NO_BACKTRACE();
+  }
 #endif
 
  #undef NODE_WANT_INTERNALS
