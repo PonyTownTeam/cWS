@@ -26,6 +26,12 @@
   #include "headers/22/base_object-inl.h"
 #endif
 
+#if NODE_MAJOR_VERSION==24
+  #include "headers/24/tcp_wrap.h"
+  #include "headers/24/crypto/crypto_tls.h"
+  #include "headers/24/base_object-inl.h"
+#endif
+
 using BaseObject = node::BaseObject;
 
 using TLSWrap = node::crypto::TLSWrap;
