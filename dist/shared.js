@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.native = exports.DEFAULT_PAYLOAD_LIMIT = exports.SLIDING_DEFLATE_WINDOW = exports.PERMESSAGE_DEFLATE = exports.APP_PING_CODE = exports.noop = void 0;
+exports.native = exports.DEFAULT_PAYLOAD_LIMIT = exports.SLIDING_DEFLATE_WINDOW = exports.PERMESSAGE_DEFLATE = exports.noop = void 0;
 exports.setupNative = setupNative;
 const client_1 = require("./client");
 const noop = () => { };
 exports.noop = noop;
-exports.APP_PING_CODE = Buffer.from('9');
 exports.PERMESSAGE_DEFLATE = 1;
 exports.SLIDING_DEFLATE_WINDOW = 16;
 exports.DEFAULT_PAYLOAD_LIMIT = 16777216;
@@ -36,10 +35,6 @@ function setupNative(group, type, wsServer) {
         }
         const webSocket = exports.native.getUserData(external);
         webSocket.external = external;
-    });
-    exports.native[type].group.onPing(group, (message, webSocket) => {
-    });
-    exports.native[type].group.onPong(group, (message, webSocket) => {
     });
     exports.native[type].group.onMessage(group, (message, webSocket) => {
         webSocket.onMessageListener(message);

@@ -21,7 +21,7 @@ protected:
         ENABLED,
         COMPRESSED_FRAME
     } compressionStatus;
-    unsigned char controlTipLength = 0, hasOutstandingPong = false;
+    unsigned char controlTipLength = 0;
 
     void *slidingDeflateWindow = nullptr;
 

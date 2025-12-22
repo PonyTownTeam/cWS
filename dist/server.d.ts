@@ -22,7 +22,6 @@ export declare class WebSocketServer {
     broadcast(message: string | Buffer, options?: {
         binary: boolean;
     }): void;
-    startAutoPing(interval: number, appLevel?: boolean): void;
     handleUpgrade(req: HTTP.IncomingMessage, socket: Socket, upgradeHead: any, cb: (ws: WebSocket) => void): void;
     close(cb?: () => void): void;
     private abortConnection;

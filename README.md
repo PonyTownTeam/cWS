@@ -189,21 +189,6 @@ wsServer.broadcast(message);
 wsServer.broadcast(message, { binary: true });
 ```
 
-cWS supports auto ping with `startAutoPing` function:
-```js
-wsServer.startAutoPing(interval, appLevel);
-
-// send ping to each client every 10s and destroy client if no pong received 
-wsServer.startAutoPing(10000);
-
-// pass true as second parameter to run app level ping
-// this is mainly used for browser to track pings at client level
-// as they do not expose on ping listener 
-// look for browser client side implementation at the bottom
-// `Handle App Level Ping In Browser (example)`
-wsServer.startAutoPing(10000, true);
-```
-
 To stop server use `close` function:
 ```js
 wsServer.close(() => {
@@ -252,36 +237,3 @@ server.listen(port, () => {
 ```
 
 **For more detail example check [examples](https://github.com/ClusterWS/cWS/blob/master/examples) folder**
-
-### Handle App Level Ping In Browser (example)
-Handling custom App level `ping`, `pong` from the client side which does not have `onping` and `onpong` listeners available such as browsers.
-
-**Note** if all your clients have `onping` and `onpong` listeners do not send `appLevelPing` ping from the server. If you enable appLevelPing you will need to implement similar handler for every client library which connects to the server.
-
-```js
-const PING = 57;
-const PONG = new Uint8Array(['A'.charCodeAt()]);
-
-socket.binaryType = 'arraybuffer';
-
-socket.onmessage = function (message) {
-    // note actually sent message in
-    // browser default WebSocket is under `message.data`
-
-    // check if message is not string 
-    if (typeof message.data !== 'string') {
-        // transform it to Uint8Array
-        let buffer = new Uint8Array(message.data);
-
-        // Check if it is actually ping from the server
-        if (buffer.length === 1 && buffer[0] === PING) {
-            // this is definitely `ping` event you can call custom on ping handler 
-            // also must send back immediately pong to the server 
-            // otherwise server will disconnect this client
-            return socket.send(PONG);
-        }
-    }
-
-    // process with your logic
-}
-```

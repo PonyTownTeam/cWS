@@ -4,7 +4,7 @@ import * as HTTPS from 'https';
 import { Socket } from 'net';
 import { WebSocket } from './client';
 import { ServerConfigs } from './index';
-import { native, noop, setupNative, APP_PING_CODE, PERMESSAGE_DEFLATE, SLIDING_DEFLATE_WINDOW, DEFAULT_PAYLOAD_LIMIT } from './shared';
+import { native, noop, setupNative, PERMESSAGE_DEFLATE, SLIDING_DEFLATE_WINDOW, DEFAULT_PAYLOAD_LIMIT } from './shared';
 
 export class WebSocketServer {
   public upgradeCb: (ws: WebSocket) => void;
@@ -133,12 +133,6 @@ export class WebSocketServer {
   public broadcast(message: string | Buffer, options?: { binary: boolean }): void {
     if (this.serverGroup) {
       native.server.group.broadcast(this.serverGroup, message, options && options.binary || false);
-    }
-  }
-
-  public startAutoPing(interval: number, appLevel?: boolean): void {
-    if (this.serverGroup) {
-      native.server.group.startAutoPing(this.serverGroup, interval, appLevel ? APP_PING_CODE : null);
     }
   }
 

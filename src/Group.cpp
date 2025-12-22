@@ -14,29 +14,6 @@ void *Group<isServer>::getUserData() {
 }
 
 template <bool isServer>
-void Group<isServer>::timerCallback(cS::Timer *timer) {
-    Group<isServer> *group = (Group<isServer> *) timer->getData();
-    // finish bugs
-    if (group->userPingMessageLength > 0) {
-        group->broadcast(group->userPingMessage, group->userPingMessageLength, group->pingMessageType, true);
-    } else {
-        group->broadcast(nullptr, 0, OpCode::PING, true);
-    }
-}
-
-template <bool isServer>
-// const char *message, size_t length, OpCode opCode
-void Group<isServer>::startAutoPing(int intervalMs, const char *message, size_t length, OpCode opCode) {
-    timer = new cS::Timer(loop);
-    timer->setData(this);
-    timer->start(timerCallback, intervalMs, intervalMs);
-
-    userPingMessage = message;
-    userPingMessageLength = length;
-    pingMessageType = opCode;
-}
-
-template <bool isServer>
 void Group<isServer>::addHttpSocket(HttpSocket<isServer> *httpSocket) {
     if (httpSocketHead) {
         httpSocketHead->prev = httpSocket;
@@ -119,7 +96,6 @@ Group<isServer>::Group(int extensionOptions, unsigned int maxPayload, Hub *hub, 
     transferHandler = [](WebSocket<isServer> *) {};
     messageHandler = [](WebSocket<isServer> *, char *, size_t, OpCode) {};
     disconnectionHandler = [](WebSocket<isServer> *, int, char *, size_t) {};
-    pingHandler = pongHandler = [](WebSocket<isServer> *, char *, size_t) {};
     errorHandler = [](errorType) {};
     httpRequestHandler = [](HttpResponse *, HttpRequest, char *, size_t, size_t) {};
     httpConnectionHandler = [](HttpSocket<isServer> *) {};
@@ -175,16 +151,6 @@ void Group<isServer>::onDisconnection(std::function<void (WebSocket<isServer> *,
 }
 
 template <bool isServer>
-void Group<isServer>::onPing(std::function<void (WebSocket<isServer> *, char *, size_t)> handler) {
-    pingHandler = handler;
-}
-
-template <bool isServer>
-void Group<isServer>::onPong(std::function<void (WebSocket<isServer> *, char *, size_t)> handler) {
-    pongHandler = handler;
-}
-
-template <bool isServer>
 void Group<isServer>::onError(std::function<void (typename Group::errorType)> handler) {
     errorHandler = handler;
 }
@@ -220,27 +186,16 @@ void Group<isServer>::onHttpUpgrade(std::function<void(HttpSocket<isServer> *, H
 }
 
 template <bool isServer>
-void Group<isServer>::broadcast(const char *message, size_t length, OpCode opCode, bool isPing) {
+void Group<isServer>::broadcast(const char *message, size_t length, OpCode opCode) {
 
 #ifdef CWS_THREADSAFE
     std::lock_guard<std::recursive_mutex> lockGuard(*asyncMutex);
 #endif
 
     typename WebSocket<isServer>::PreparedMessage *preparedMessage = WebSocket<isServer>::prepareMessage((char *) message, length, opCode, false);
-      if(isPing) {
-        forEach([preparedMessage](cWS::WebSocket<isServer> *ws) {
-            if (ws->hasOutstandingPong) {
-                ws->terminate();
-            } else {
-                ws->hasOutstandingPong = true;
-                ws->sendPrepared(preparedMessage);
-            }
-        });
-      } else {
         forEach([preparedMessage](cWS::WebSocket<isServer> *ws) {
           ws->sendPrepared(preparedMessage);
         });
-      }
     WebSocket<isServer>::finalizeMessage(preparedMessage);
 }
 
@@ -264,10 +219,6 @@ void Group<isServer>::close(int code, char *message, size_t length) {
     forEachHttpSocket([](HttpSocket<isServer> *httpSocket) {
         httpSocket->shutdown();
     });
-    if (timer) {
-        timer->stop();
-        timer->close();
-    }
 }
 
 template struct Group<true>;

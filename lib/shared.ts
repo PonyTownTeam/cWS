@@ -3,7 +3,6 @@ import { WebSocketServer } from './server';
 
 export const noop: () => void = (): void => { /** ignore */ };
 
-export const APP_PING_CODE: Buffer = Buffer.from('9');
 export const PERMESSAGE_DEFLATE: number = 1;
 export const SLIDING_DEFLATE_WINDOW: number = 16;
 export const DEFAULT_PAYLOAD_LIMIT: number = 16777216;
@@ -38,12 +37,6 @@ export function setupNative(group: any, type: string, wsServer?: WebSocketServer
 
     const webSocket: WebSocket = native.getUserData(external);
     (webSocket as any).external = external;
-  });
-
-  native[type].group.onPing(group, (message: string | Buffer, webSocket: WebSocket): void => {
-  });
-
-  native[type].group.onPong(group, (message: string | Buffer, webSocket: WebSocket): void => {
   });
 
   native[type].group.onMessage(group, (message: string | Buffer, webSocket: WebSocket): void => {

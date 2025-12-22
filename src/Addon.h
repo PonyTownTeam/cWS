@@ -129,7 +129,7 @@ class NativeString {
 
 struct GroupData {
   Persistent<Function> connectionHandler, messageHandler, disconnectionHandler,
-      pingHandler, pongHandler, errorHandler, httpRequestHandler,
+      errorHandler, httpRequestHandler,
       httpUpgradeHandler, httpCancelledRequestCallback;
   int size = 0;
 };
@@ -362,56 +362,11 @@ void onMessage(const FunctionCallbackInfo<Value> &args) {
   group->onMessage([isolate, messageCallback, group](
                        cWS::WebSocket<isServer> *webSocket, const char *message,
                        size_t length, cWS::OpCode opCode) {
-    if(length == 1 && message[0] == 65) {
-      // emit pong event if we get pong from the client
-      group->pongHandler(webSocket, nullptr, 0);
-    } else {
       HandleScope hs(isolate);
       Local<Value> argv[] = {wrapMessage(message, length, opCode, isolate),
                             getDataV8(webSocket, isolate)};
       Local<Function>::New(isolate, *messageCallback)
           ->Call(isolate->GetCurrentContext(), Null(isolate), 2, argv);
-    }
-  });
-}
-
-template <bool isServer>
-void onPing(const FunctionCallbackInfo<Value> &args) {
-  cWS::Group<isServer> *group =
-      (cWS::Group<isServer> *)args[0].As<External>()->Value();
-  GroupData *groupData = (GroupData *)group->getUserData();
-
-  Isolate *isolate = args.GetIsolate();
-  Persistent<Function> *pingCallback = &groupData->pingHandler;
-  pingCallback->Reset(isolate, Local<Function>::Cast(args[1]));
-  group->onPing([isolate, pingCallback](cWS::WebSocket<isServer> *webSocket,
-                                        const char *message, size_t length) {
-    HandleScope hs(isolate);
-    Local<Value> argv[] = {
-        wrapMessage(message, length, cWS::OpCode::PING, isolate),
-        getDataV8(webSocket, isolate)};
-    node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
-                       Local<Function>::New(isolate, *pingCallback), 2, argv);
-  });
-}
-
-template <bool isServer>
-void onPong(const FunctionCallbackInfo<Value> &args) {
-  cWS::Group<isServer> *group =
-      (cWS::Group<isServer> *)args[0].As<External>()->Value();
-  GroupData *groupData = (GroupData *)group->getUserData();
-
-  Isolate *isolate = args.GetIsolate();
-  Persistent<Function> *pongCallback = &groupData->pongHandler;
-  pongCallback->Reset(isolate, Local<Function>::Cast(args[1]));
-  group->onPong([isolate, pongCallback](cWS::WebSocket<isServer> *webSocket,
-                                        const char *message, size_t length) {
-    HandleScope hs(isolate);
-    Local<Value> argv[] = {
-        wrapMessage(message, length, cWS::OpCode::PONG, isolate),
-        getDataV8(webSocket, isolate)};
-    node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
-                       Local<Function>::New(isolate, *pongCallback), 2, argv);
   });
 }
 
@@ -496,7 +451,7 @@ void broadcast(const FunctionCallbackInfo<Value> &args) {
   cWS::OpCode opCode =
       args[2].As<Boolean>()->Value() ? cWS::OpCode::BINARY : cWS::OpCode::TEXT;
   NativeString nativeString(args.GetIsolate(), args[1]);
-  group->broadcast(nativeString.getData(), nativeString.getLength(), opCode, false);
+  group->broadcast(nativeString.getData(), nativeString.getLength(), opCode);
 }
 
 template <bool isServer>
@@ -544,17 +499,6 @@ void getSize(const FunctionCallbackInfo<Value> &args) {
       (cWS::Group<cWS::SERVER> *)args[0].As<External>()->Value();
   GroupData *groupData = (GroupData *)group->getUserData();
   args.GetReturnValue().Set(Integer::New(args.GetIsolate(), groupData->size));
-}
-
-void startAutoPing(const FunctionCallbackInfo<Value> &args) {
-  cWS::Group<cWS::SERVER> *group =
-      (cWS::Group<cWS::SERVER> *)args[0].As<External>()->Value();
-
-  NativeString nativeString(args.GetIsolate(), args[2]);
-
-  group->startAutoPing(
-      args[1].As<Integer>()->Value(),
-      nativeString.getData(), nativeString.getLength(), cWS::OpCode::BINARY);
 }
 
 
@@ -609,12 +553,9 @@ struct Namespace {
     } else {
       NODE_SET_METHOD(group, "forEach", forEach);
       NODE_SET_METHOD(group, "getSize", getSize);
-      NODE_SET_METHOD(group, "startAutoPing", startAutoPing);
       NODE_SET_METHOD(group, "listen", listen);
     }
 
-    NODE_SET_METHOD(group, "onPing", onPing<isServer>);
-    NODE_SET_METHOD(group, "onPong", onPong<isServer>);
     NODE_SET_METHOD(group, "create", createGroup<isServer>);
     NODE_SET_METHOD(group, "delete", deleteGroup<isServer>);
     NODE_SET_METHOD(group, "close", closeGroup<isServer>);

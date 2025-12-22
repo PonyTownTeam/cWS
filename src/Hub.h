@@ -83,10 +83,6 @@ public:
     using Group<CLIENT>::onMessage;
     using Group<SERVER>::onDisconnection;
     using Group<CLIENT>::onDisconnection;
-    using Group<SERVER>::onPing;
-    using Group<CLIENT>::onPing;
-    using Group<SERVER>::onPong;
-    using Group<CLIENT>::onPong;
     using Group<SERVER>::onError;
     using Group<CLIENT>::onError;
     using Group<SERVER>::onHttpRequest;

@@ -99,11 +99,6 @@ class WebSocketServer {
             shared_1.native.server.group.broadcast(this.serverGroup, message, options && options.binary || false);
         }
     }
-    startAutoPing(interval, appLevel) {
-        if (this.serverGroup) {
-            shared_1.native.server.group.startAutoPing(this.serverGroup, interval, appLevel ? shared_1.APP_PING_CODE : null);
-        }
-    }
     handleUpgrade(req, socket, upgradeHead, cb) {
         if (this.options.noServer) {
             this.upgradeConnection(req, socket, cb);

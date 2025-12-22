@@ -27,7 +27,6 @@ protected:
     std::function<void(WebSocket<isServer> *)> transferHandler;
     std::function<void(WebSocket<isServer> *, char *message, size_t length, OpCode opCode)> messageHandler;
     std::function<void(WebSocket<isServer> *, int code, char *message, size_t length)> disconnectionHandler;
-    std::function<void(WebSocket<isServer> *, char *, size_t)> pingHandler;
     std::function<void(HttpSocket<isServer> *)> httpConnectionHandler;
     std::function<void(HttpResponse *, HttpRequest, char *, size_t, size_t)> httpRequestHandler;
     std::function<void(HttpResponse *, char *, size_t, size_t)> httpDataHandler;
@@ -41,10 +40,7 @@ protected:
     unsigned int maxPayload;
     Hub *hub;
     int extensionOptions;
-    cS::Timer *timer = nullptr, *httpTimer = nullptr;
-    const char *userPingMessage;
-    size_t userPingMessageLength;
-    OpCode pingMessageType;
+    cS::Timer *httpTimer = nullptr;
     std::stack<cS::Poll *> iterators;
 
     // todo: cannot be named user, collides with parent!
@@ -65,14 +61,10 @@ protected:
     void stopListening();
 
 public:
-    std::function<void(WebSocket<isServer> *, char *, size_t)> pongHandler;
-
     void onConnection(std::function<void(WebSocket<isServer> *, HttpRequest)> handler);
     void onTransfer(std::function<void(WebSocket<isServer> *)> handler);
     void onMessage(std::function<void(WebSocket<isServer> *, char *, size_t, OpCode)> handler);
     void onDisconnection(std::function<void(WebSocket<isServer> *, int code, char *message, size_t length)> handler);
-    void onPing(std::function<void(WebSocket<isServer> *, char *, size_t)> handler);
-    void onPong(std::function<void(WebSocket<isServer> *, char *, size_t)> handler);
     void onError(std::function<void(errorType)> handler);
     void onHttpConnection(std::function<void(HttpSocket<isServer> *)> handler);
     void onHttpRequest(std::function<void(HttpResponse *, HttpRequest, char *data, size_t length, size_t remainingBytes)> handler);
@@ -82,14 +74,13 @@ public:
     void onHttpUpgrade(std::function<void(HttpSocket<isServer> *, HttpRequest)> handler);
 
     // Thread safe
-    void broadcast(const char *message, size_t length, OpCode opCode, bool isPing);
+    void broadcast(const char *message, size_t length, OpCode opCode);
     void setUserData(void *user);
     void *getUserData();
 
     // Not thread safe
     void terminate();
     void close(int code = 1000, char *message = nullptr, size_t length = 0);
-    void startAutoPing(int intervalMs, const char *message, size_t length, OpCode opCode);
 
     // same as listen(TRANSFERS), backwards compatible API for now
     void addAsync() {
