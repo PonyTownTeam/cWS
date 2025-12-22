@@ -41,18 +41,6 @@ export class WebSocket {
     return this.external ? OPEN : CLOSED;
   }
 
-  public set onclose(listener: onCloseType) {
-	this.onCloseListener = listener;
-  }
-
-  public set onerror(listener: onErrorType) {
-	this.onErrorListener = listener;
-  }
-
-  public set onmessage(listener: onMessageType) {
-	this.onMessageListener = listener;
-  }
-
   public send(message: Buffer): void {
     if (this.external) {
       server.send(this.external, message);

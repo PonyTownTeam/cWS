@@ -14,9 +14,6 @@ export declare class WebSocket {
     constructor(url: string, options?: any);
     get _socket(): SocketAddress;
     get readyState(): number;
-    set onclose(listener: onCloseType);
-    set onerror(listener: onErrorType);
-    set onmessage(listener: onMessageType);
     send(message: Buffer): void;
     close(code?: number, reason?: string): void;
     terminate(): void;

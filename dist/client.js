@@ -30,15 +30,6 @@ class WebSocket {
     get readyState() {
         return this.external ? OPEN : CLOSED;
     }
-    set onclose(listener) {
-        this.onCloseListener = listener;
-    }
-    set onerror(listener) {
-        this.onErrorListener = listener;
-    }
-    set onmessage(listener) {
-        this.onMessageListener = listener;
-    }
     send(message) {
         if (this.external) {
             server.send(this.external, message);
