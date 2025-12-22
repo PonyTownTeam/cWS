@@ -11,7 +11,6 @@ enum Options : unsigned int {
     SERVER_NO_CONTEXT_TAKEOVER = 2, // remove this
     CLIENT_NO_CONTEXT_TAKEOVER = 4, // remove this
     NO_DELAY = 8,
-    SLIDING_DEFLATE_WINDOW = 16
 };
 
 template <bool isServer>

@@ -101,7 +101,6 @@ protected:
     enum {
         SND_CONTINUATION = 1,
         SND_NO_FIN = 2,
-        SND_COMPRESSED = 64
     };
 
     template <unsigned int MESSAGE_HEADER, typename T>
@@ -284,7 +283,7 @@ public:
         return 0;
     }
 
-    static inline size_t formatMessage(char *dst, const char *src, size_t length, OpCode opCode, size_t reportedLength, bool compressed) {
+    static inline size_t formatMessage(char *dst, const char *src, size_t length, OpCode opCode, size_t reportedLength) {
         size_t messageLength;
         size_t headerLength;
         if (reportedLength < 126) {
@@ -301,7 +300,7 @@ public:
         }
 
         int flags = 0;
-        dst[0] = (flags & SND_NO_FIN ? 0 : 128) | (compressed ? SND_COMPRESSED : 0);
+        dst[0] = flags & SND_NO_FIN ? 0 : 128;
         if (!(flags & SND_CONTINUATION)) {
             dst[0] |= opCode;
         }
@@ -319,7 +318,6 @@ public:
         memcpy(dst + headerLength, src, length);
 
         if (!isServer) {
-
             // overwrites up to 3 bytes outside of the given buffer!
             //WebSocketProtocol<isServer>::unmaskInplace(dst + headerLength, dst + headerLength + length, mask);
 
@@ -343,9 +341,8 @@ public:
         if (wState->state.wantsHead) {
             parseNext:
             while (length >= SHORT_MESSAGE_HEADER) {
-
-                // invalid reserved bits / invalid opcodes / invalid control frames / set compressed frame
-                if ((rsv1(src) && !Impl::setCompressed(wState)) || rsv23(src) || (getOpCode(src) > 2 && getOpCode(src) < 8) ||
+                // invalid reserved bits / invalid opcodes / invalid control frames
+                if (rsv1(src) || rsv23(src) || (getOpCode(src) > 2 && getOpCode(src) < 8) ||
                     getOpCode(src) > 10 || (getOpCode(src) > 2 && (!isFin(src) || payloadLength(src) > 125))) {
                     Impl::forceClose(wState);
                     return;

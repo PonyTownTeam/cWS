@@ -16,14 +16,7 @@ template <const bool isServer>
 struct WIN32_EXPORT WebSocket : cS::Socket, WebSocketState<isServer> {
 protected:
     std::string fragmentBuffer;
-    enum CompressionStatus : char {
-        DISABLED,
-        ENABLED,
-        COMPRESSED_FRAME
-    } compressionStatus;
     unsigned char controlTipLength = 0;
-
-    void *slidingDeflateWindow = nullptr;
 
     WebSocket(bool perMessageDeflate, cS::Socket *socket);
 
@@ -34,17 +27,6 @@ protected:
     static bool refusePayloadLength(uint64_t length, WebSocketState<isServer> *webSocketState) {
         WebSocket<isServer> *webSocket = static_cast<WebSocket<isServer> *>(webSocketState);
         return length > Group<isServer>::from(webSocket)->maxPayload;
-    }
-
-    static bool setCompressed(WebSocketState<isServer> *webSocketState) {
-        WebSocket<isServer> *webSocket = static_cast<WebSocket<isServer> *>(webSocketState);
-
-        if (webSocket->compressionStatus == WebSocket<isServer>::CompressionStatus::ENABLED) {
-            webSocket->compressionStatus = WebSocket<isServer>::CompressionStatus::COMPRESSED_FRAME;
-            return true;
-        } else {
-            return false;
-        }
     }
 
     static void forceClose(WebSocketState<isServer> *webSocketState) {
@@ -70,10 +52,10 @@ public:
 
     // Thread safe
     void terminate();
-    void send(const char *message, size_t length, OpCode opCode, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr, void *callbackData = nullptr, bool compress = false);
-    static PreparedMessage *prepareMessage(char *data, size_t length, OpCode opCode, bool compressed, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr);
+    void send(const char *message, size_t length, OpCode opCode, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr, void *callbackData = nullptr);
+    static PreparedMessage *prepareMessage(char *data, size_t length, OpCode opCode, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr);
     static PreparedMessage *prepareMessageBatch(std::vector<std::string> &messages, std::vector<int> &excludedMessages,
-                                                OpCode opCode, bool compressed, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr);
+                                                OpCode opCode, void(*callback)(WebSocket<isServer> *webSocket, void *data, bool cancelled, void *reserved) = nullptr);
 
     friend struct Hub;
     friend struct Group<isServer>;

@@ -246,7 +246,7 @@ void sendBuffer(const FunctionCallbackInfo<Value> &args) {
 	auto length = node::Buffer::Length(args[1]);
 
   unwrapSocket<isServer>(args[0].As<External>())
-      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr, false);
+      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr);
 }
 
 template <bool isServer>
@@ -257,7 +257,7 @@ void sendArrayBuffer(const FunctionCallbackInfo<Value> &args) {
 	size_t length = args[2].As<Integer>()->Value();
 
   unwrapSocket<isServer>(args[0].As<External>())
-      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr, false);
+      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr);
 }
 
 void connect(const FunctionCallbackInfo<Value> &args) {
@@ -461,7 +461,7 @@ void prepareMessage(const FunctionCallbackInfo<Value> &args) {
   args.GetReturnValue().Set(External::New(
       args.GetIsolate(),
       cWS::WebSocket<isServer>::prepareMessage(
-          nativeString.getData(), nativeString.getLength(), opCode, false)));
+          nativeString.getData(), nativeString.getLength(), opCode)));
 }
 
 template <bool isServer>

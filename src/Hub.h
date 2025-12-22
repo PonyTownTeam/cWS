@@ -4,7 +4,6 @@
 #include "Group.h"
 #include "cSNode.h"
 #include <string>
-#include <zlib.h>
 #include <mutex>
 #include <map>
 
@@ -18,13 +17,6 @@ protected:
         Group<CLIENT> *group;
     };
 
-    static z_stream *allocateDefaultCompressor(z_stream *zStream);
-
-    z_stream inflationStream = {}, deflationStream = {};
-    char *deflate(char *data, size_t &length, z_stream *slidingDeflateWindow);
-    char *inflate(char *data, size_t &length, size_t maxPayload);
-    char *zlibBuffer;
-    std::string dynamicZlibBuffer;
     static const int LARGE_BUFFER_SIZE = 300 * 1024;
 
     static void onServerAccept(cS::Socket *s);
@@ -48,11 +40,6 @@ public:
 
     Hub(int extensionOptions = 0, bool useDefaultLoop = false, unsigned int maxPayload = 16777216) : cS::Node(LARGE_BUFFER_SIZE, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_PRE_PADDING, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_POST_PADDING, useDefaultLoop),
                                              Group<SERVER>(extensionOptions, maxPayload, this, nodeData), Group<CLIENT>(0, maxPayload, this, nodeData) {
-        inflateInit2(&inflationStream, -15);
-        zlibBuffer = new char[LARGE_BUFFER_SIZE];
-
-        allocateDefaultCompressor(&deflationStream);
-
 #ifdef CWS_THREADSAFE
         getLoop()->preCbData = nodeData;
         getLoop()->preCb = [](void *nodeData) {
@@ -64,12 +51,6 @@ public:
             static_cast<cS::NodeData *>(nodeData)->asyncMutex->unlock();
         };
 #endif
-    }
-
-    ~Hub() {
-        inflateEnd(&inflationStream);
-        deflateEnd(&deflationStream);
-        delete [] zlibBuffer;
     }
 
     using cS::Node::run;

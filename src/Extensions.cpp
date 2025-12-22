@@ -91,9 +91,6 @@ std::string ExtensionsNegotiator<isServer>::generateOffer() {
         }
 
         // we do not support accepting this yet
-        // todo: if we agree on this, do not allocate a compressor
-        // per socket!
-
         // It is RECOMMENDED that a server supports the
         // "server_no_context_takeover" extension parameter in an extension
         // negotiation offer.
