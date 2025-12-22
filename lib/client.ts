@@ -12,7 +12,6 @@ type onMessageType = (message: string | any) => void;
 
 const OPEN = 1;
 const CLOSED = 3;
-const OPCODE_BINARY = 2;
 
 export class WebSocket {
   public static Server: new (options: ServerConfigs, cb?: () => void) => WebSocketServer = WebSocketServer;
@@ -56,7 +55,7 @@ export class WebSocket {
 
   public send(message: Buffer): void {
     if (this.external) {
-      server.send(this.external, message, OPCODE_BINARY, null, false);
+      server.send(this.external, message);
     }
   }
 

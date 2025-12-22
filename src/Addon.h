@@ -258,24 +258,10 @@ void sendCallback(cWS::WebSocket<isServer> *webSocket, void *data,
 
 template <bool isServer>
 void send(const FunctionCallbackInfo<Value> &args) {
-  cWS::OpCode opCode = (cWS::OpCode)args[2].As<Integer>()->Value();
   NativeString nativeString(args.GetIsolate(), args[1]);
 
-  SendCallbackData *sc = nullptr;
-  void (*callback)(cWS::WebSocket<isServer> *, void *, bool, void *) = nullptr;
-
-  if (args[3]->IsFunction()) {
-    callback = sendCallback;
-    sc = new SendCallbackData;
-    sc->jsCallback.Reset(args.GetIsolate(), Local<Function>::Cast(args[3]));
-    sc->isolate = args.GetIsolate();
-  }
-
-  bool compress = args[4].As<Boolean>()->Value();
-
   unwrapSocket<isServer>(args[0].As<External>())
-      ->send(nativeString.getData(), nativeString.getLength(), opCode, callback,
-             sc, compress);
+      ->send(nativeString.getData(), nativeString.getLength(), cWS::OpCode::BINARY, nullptr, nullptr, false);
 }
 
 void connect(const FunctionCallbackInfo<Value> &args) {

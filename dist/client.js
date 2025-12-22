@@ -8,7 +8,6 @@ const clientGroup = shared_1.native.client.group.create(0, shared_1.DEFAULT_PAYL
 const { server } = shared_1.native;
 const OPEN = 1;
 const CLOSED = 3;
-const OPCODE_BINARY = 2;
 class WebSocket {
     constructor(url, options = {}) {
         this.url = url;
@@ -42,7 +41,7 @@ class WebSocket {
     }
     send(message) {
         if (this.external) {
-            server.send(this.external, message, OPCODE_BINARY, null, false);
+            server.send(this.external, message);
         }
     }
     close(code = 1000, reason) {
