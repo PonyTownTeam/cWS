@@ -43,7 +43,13 @@ export class WebSocket {
 
   public sendBuffer(message: Buffer): void {
     if (this.external) {
-      server.send(this.external, message);
+      server.sendBuffer(this.external, message);
+    }
+  }
+
+  public sendArrayBuffer(message: ArrayBuffer, length: number): void {
+    if (this.external) {
+      server.sendArrayBuffer(this.external, message, length);
     }
   }
 

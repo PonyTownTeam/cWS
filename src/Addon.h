@@ -103,26 +103,14 @@ class NativeString {
       length = node::Buffer::Length(value);
     } else if (value->IsTypedArray()) {
       Local<ArrayBufferView> arrayBufferView = Local<ArrayBufferView>::Cast(value);
-      #if V8_MAJOR_VERSION >= 8
-        std::shared_ptr<BackingStore> backingStore = arrayBufferView->Buffer()->GetBackingStore();
-        length = backingStore->ByteLength();
-        data = (char *)backingStore->Data();
-      #else
-        ArrayBuffer::Contents contents = arrayBufferView->Buffer()->GetContents();
-        length = contents.ByteLength();
-        data = (char *)contents.Data();
-      #endif
+      std::shared_ptr<BackingStore> backingStore = arrayBufferView->Buffer()->GetBackingStore();
+      length = backingStore->ByteLength();
+      data = (char *)backingStore->Data();
     } else if (value->IsArrayBuffer()) {
       Local<ArrayBuffer> arrayBuffer = Local<ArrayBuffer>::Cast(value);
-      #if V8_MAJOR_VERSION >= 8
-        std::shared_ptr<BackingStore> backingStore = arrayBuffer->GetBackingStore();
-        length = backingStore->ByteLength();
-        data = (char *)backingStore->Data();
-      #else
-        ArrayBuffer::Contents contents = arrayBuffer->GetContents();
-        length = contents.ByteLength();
-        data = (char *)contents.Data();
-      #endif
+      std::shared_ptr<BackingStore> backingStore = arrayBuffer->GetBackingStore();
+      length = backingStore->ByteLength();
+      data = (char *)backingStore->Data();
     } else {
       static char empty[] = "";
       data = empty;
@@ -177,13 +165,9 @@ inline Local<Value> wrapMessage(const char *message, size_t length,
                                 cWS::OpCode opCode, Isolate *isolate) {
 
   if (opCode == cWS::OpCode::BINARY) {
-    #if V8_MAJOR_VERSION >= 8
-      std::unique_ptr<BackingStore> backingStore =
-        ArrayBuffer::NewBackingStore((char *)message, length, BackingStore::EmptyDeleter, nullptr);
-      return (Local<Value>)ArrayBuffer::New(isolate, std::move(backingStore));
-    #else
-      return (Local<Value>)ArrayBuffer::New(isolate, (char *)message, length);
-    #endif
+    std::unique_ptr<BackingStore> backingStore =
+      ArrayBuffer::NewBackingStore((char *)message, length, BackingStore::EmptyDeleter, nullptr);
+    return (Local<Value>)ArrayBuffer::New(isolate, std::move(backingStore));
   }
 
   return (Local<Value>)String::NewFromUtf8(isolate, message, NewStringType::kNormal, length).ToLocalChecked();
@@ -257,11 +241,23 @@ void sendCallback(cWS::WebSocket<isServer> *webSocket, void *data,
 }
 
 template <bool isServer>
-void send(const FunctionCallbackInfo<Value> &args) {
-  NativeString nativeString(args.GetIsolate(), args[1]);
+void sendBuffer(const FunctionCallbackInfo<Value> &args) {
+	auto data = node::Buffer::Data(args[1]);
+	auto length = node::Buffer::Length(args[1]);
 
   unwrapSocket<isServer>(args[0].As<External>())
-      ->send(nativeString.getData(), nativeString.getLength(), cWS::OpCode::BINARY, nullptr, nullptr, false);
+      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr, false);
+}
+
+template <bool isServer>
+void sendArrayBuffer(const FunctionCallbackInfo<Value> &args) {
+    Local<ArrayBuffer> arrayBuffer = Local<ArrayBuffer>::Cast(args[1]);
+	auto data = (char *)arrayBuffer->GetBackingStore()->Data();
+	
+	size_t length = args[2].As<Integer>()->Value();
+
+  unwrapSocket<isServer>(args[0].As<External>())
+      ->send(data, length, cWS::OpCode::BINARY, nullptr, nullptr, false);
 }
 
 void connect(const FunctionCallbackInfo<Value> &args) {
@@ -595,7 +591,8 @@ struct Namespace {
   Local<Object> object;
   Namespace(Isolate *isolate) {
     object = Object::New(isolate);
-    NODE_SET_METHOD(object, "send", send<isServer>);
+    NODE_SET_METHOD(object, "sendBuffer", sendBuffer<isServer>);
+    NODE_SET_METHOD(object, "sendArrayBuffer", sendArrayBuffer<isServer>);
     NODE_SET_METHOD(object, "close", closeSocket<isServer>);
     NODE_SET_METHOD(object, "terminate", terminateSocket<isServer>);
     NODE_SET_METHOD(object, "prepareMessage", prepareMessage<isServer>);

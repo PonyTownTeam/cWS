@@ -32,7 +32,12 @@ class WebSocket {
     }
     sendBuffer(message) {
         if (this.external) {
-            server.send(this.external, message);
+            server.sendBuffer(this.external, message);
+        }
+    }
+    sendArrayBuffer(message, length) {
+        if (this.external) {
+            server.sendArrayBuffer(this.external, message, length);
         }
     }
     close(code = 1000, reason) {

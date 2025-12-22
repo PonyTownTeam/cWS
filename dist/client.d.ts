@@ -15,6 +15,7 @@ export declare class WebSocket {
     get _socket(): SocketAddress;
     get readyState(): number;
     sendBuffer(message: Buffer): void;
+    sendArrayBuffer(message: ArrayBuffer, length: number): void;
     close(code?: number, reason?: string): void;
     terminate(): void;
 }
