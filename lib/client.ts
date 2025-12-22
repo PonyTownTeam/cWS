@@ -41,7 +41,7 @@ export class WebSocket {
     return this.external ? OPEN : CLOSED;
   }
 
-  public send(message: Buffer): void {
+  public sendBuffer(message: Buffer): void {
     if (this.external) {
       server.send(this.external, message);
     }

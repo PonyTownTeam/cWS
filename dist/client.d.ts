@@ -14,7 +14,7 @@ export declare class WebSocket {
     constructor(url: string, options?: any);
     get _socket(): SocketAddress;
     get readyState(): number;
-    send(message: Buffer): void;
+    sendBuffer(message: Buffer): void;
     close(code?: number, reason?: string): void;
     terminate(): void;
 }

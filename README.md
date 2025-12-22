@@ -64,61 +64,25 @@ Connect to WebSocket server:
 const socket = new WebSocket(/* ws server endpoint **/);
 ```
 
-Event on `open` is triggered when server accepts connection and this connection is ready to perform other actions:
+Event is triggered if there is an error with the connection:
 ```js
-socket.on('open', () => { });
-// or like browser interface
-socket.onopen = () => { };
+socket.onErrorListener = (err) => { };
 ```
 
-Event on `error` is triggered if there is an error with the connection:
+Event is triggered when connection has been closed:
 ```js
-socket.on('error', (err) => { });
-// or like browser interface
-socket.onerror = (err) => { };
+socket.onCloseListener = (code, reason) => { };
 ```
 
-Event on `close` is triggered when connection has been closed:
+Event is triggered when client receives message(s):
 ```js
-// code: number and reason: string are optional
-socket.on('close', (code, reason) => { });
-// or like browser interface
-socket.onclose = (code, reason) => { };
+socket.onmessonMessageListenerage = (message) => { };
 ```
 
-Event on `message` is triggered when client receives message(s):
+To send message use `sendBuffer` function:
 ```js
-// receives string or binary
-
-socket.on('message', (message) => { });
-// or like browser interface
-socket.onmessage = (message) => { };
-```
-
-Event `ping` is triggered when other side sends ping to check if connection still active:
-```js
-socket.on('ping', () => { });
-```
-
-Event `pong` is triggered after `ping` has been sent and it received back conformation:
-```js
-socket.on('pong', () => { })
-```
-
-To send message use `send` function:
-```js
-// send accepts string or binary
-// will automatically identify type
-socket.send(msg);
-
-// will overwrite/specify message type to string (does not transform data to specified type)
-socket.send(msg, { binary: false });
-
-// will overwrite/specify message type to binary (does not transform data to specified type)
-socket.send(msg, { binary: true });
-
-// will call callback after message sent or errored
-socket.send(msg, null, (err) => { });
+// send accepts binary
+socket.sendBuffer(msg);
 ```
 
 To close connection you can use `close` or `terminate` methods:
@@ -127,12 +91,6 @@ To close connection you can use `close` or `terminate` methods:
 socket.close(code, reason);
 // destroy socket 
 socket.terminate()
-```
-
-Use `ping` function to manually send ping:
-```js
-socket.ping();
-// now just wait for `pong` event
 ```
 
 To get current socket ready state can use `readyState` getter:

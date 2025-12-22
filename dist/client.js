@@ -30,7 +30,7 @@ class WebSocket {
     get readyState() {
         return this.external ? OPEN : CLOSED;
     }
-    send(message) {
+    sendBuffer(message) {
         if (this.external) {
             server.send(this.external, message);
         }
