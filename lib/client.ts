@@ -18,8 +18,8 @@ export class WebSocket {
   public static Server: new (options: ServerConfigs, cb?: () => void) => WebSocketServer = WebSocketServer;
 
   public onCloseListener: onCloseType = noop;
-  public onErrorListener: Function = noop;
-  public onMessageListener: Function = noop;
+  public onErrorListener: onErrorType = noop;
+  public onMessageListener: onMessageType = noop;
 
   private external: any;
 

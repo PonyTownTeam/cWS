@@ -8,8 +8,8 @@ export declare class WebSocket {
     private options;
     static Server: new (options: ServerConfigs, cb?: () => void) => WebSocketServer;
     onCloseListener: onCloseType;
-    onErrorListener: Function;
-    onMessageListener: Function;
+    onErrorListener: onErrorType;
+    onMessageListener: onMessageType;
     private external;
     constructor(url: string, options?: any);
     get _socket(): SocketAddress;

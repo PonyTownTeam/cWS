@@ -66,7 +66,7 @@ export function setupNative(group: any, type: string, wsServer?: WebSocketServer
         webSocket.onErrorListener({
           message: 'cWs client connection error',
           stack: 'cWs client connection error'
-        });
+        } as Error);
       });
     });
   }
