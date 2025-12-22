@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebSocketServer = void 0;
 const HTTP = require("http");
 const shared_1 = require("./shared");
 class WebSocketServer {
@@ -18,7 +19,7 @@ class WebSocketServer {
             }
         }
         this.serverGroup = shared_1.native.server.group.create(nativeOptions, this.options.maxPayload || shared_1.DEFAULT_PAYLOAD_LIMIT);
-        shared_1.setupNative(this.serverGroup, 'server', this);
+        (0, shared_1.setupNative)(this.serverGroup, 'server', this);
         if (this.options.noServer) {
             return;
         }
@@ -31,7 +32,8 @@ class WebSocketServer {
                 'Content-Length': body.length,
                 'Content-Type': 'text/plain'
             });
-            return res.end(body);
+            res.end(body);
+            return;
         });
         this.httpServer.on('upgrade', this.onUpgradeRequest = ((req, socket) => {
             socket.on('error', () => {
@@ -124,7 +126,8 @@ class WebSocketServer {
         }, 0);
     }
     abortConnection(socket, code, message) {
-        return socket.end(`HTTP/1.1 ${code} ${message}\r\n\r\n`);
+        socket.end(`HTTP/1.1 ${code} ${message}\r\n\r\n`);
+        return;
     }
     upgradeConnection(req, socket, cb) {
         const secKey = req.headers['sec-websocket-key'];

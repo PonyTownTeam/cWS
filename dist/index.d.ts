@@ -1,18 +1,17 @@
-/// <reference types="node" />
 import * as HTTP from 'http';
 import * as HTTPS from 'https';
-export declare type VerifyClientNext = (verified: boolean, code?: number, message?: string) => void;
-export declare type SocketAddress = {
+export type VerifyClientNext = (verified: boolean, code?: number, message?: string) => void;
+export type SocketAddress = {
     remotePort?: number;
     remoteAddress?: string;
     remoteFamily?: string;
 };
-export declare type ConnectionInfo = {
+export type ConnectionInfo = {
     req: HTTP.IncomingMessage;
     secure: boolean;
     origin?: string;
 };
-export declare type ServerConfigs = {
+export type ServerConfigs = {
     path?: string;
     port?: number;
     host?: string;

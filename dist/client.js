@@ -1,18 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebSocket = void 0;
 const server_1 = require("./server");
 const shared_1 = require("./shared");
 const clientGroup = shared_1.native.client.group.create(0, shared_1.DEFAULT_PAYLOAD_LIMIT);
-shared_1.setupNative(clientGroup, 'client');
-const server = shared_1.native.server;
+(0, shared_1.setupNative)(clientGroup, 'client');
+const { server } = shared_1.native;
+const OPEN = 1;
+const CLOSED = 3;
+const OPCODE_BINARY = 2;
 class WebSocket {
-    constructor(_url, options = undefined) {
-        this.open = shared_1.noop;
-        this.ping = shared_1.noop;
-        this.error = shared_1.noop;
-        this.close = shared_1.noop;
-        this.message = shared_1.noop;
-        this.external = options?.external;
+    constructor(url, options = {}) {
+        this.url = url;
+        this.options = options;
+        this.onCloseListener = shared_1.noop;
+        this.onErrorListener = shared_1.noop;
+        this.onMessageListener = shared_1.noop;
+        if (!this.url && this.options.external) {
+            this.external = this.options.external;
+        }
     }
     get _socket() {
         const address = this.external ? shared_1.native.getAddress(this.external) : new Array(3);
@@ -23,37 +29,20 @@ class WebSocket {
         };
     }
     get readyState() {
-        return this.external ? 1 : 3;
-    }
-    set onopen(listener) {
-        this.on('open', listener);
+        return this.external ? OPEN : CLOSED;
     }
     set onclose(listener) {
-        this.on('close', listener);
+        this.onCloseListener = listener;
     }
     set onerror(listener) {
-        this.on('error', listener);
+        this.onErrorListener = listener;
     }
     set onmessage(listener) {
-        this.on('message', listener);
-    }
-    on(event, listener) {
-        if (event === 'open') this.open = listener;
-        else if (event === 'ping') this.ping = listener;
-        else if (event === 'error') this.error = listener;
-        else if (event === 'close') this.close = listener;
-        else if (event === 'message') this.message = listener;
-        else console.error(`invalid event`, event);
+        this.onMessageListener = listener;
     }
     send(message) {
-        // this check is needed to ensure the socket isn't closed
         if (this.external) {
-            server.send(this.external, message, 2, null, false);
-        }
-    }
-    ping(message) {
-        if (this.external) {
-            server.send(this.external, message, 9);
+            server.send(this.external, message, OPCODE_BINARY, null, false);
         }
     }
     close(code = 1000, reason) {

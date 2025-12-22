@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.native = exports.DEFAULT_PAYLOAD_LIMIT = exports.SLIDING_DEFLATE_WINDOW = exports.PERMESSAGE_DEFLATE = exports.APP_PING_CODE = exports.noop = void 0;
+exports.setupNative = setupNative;
 const client_1 = require("./client");
-exports.noop = () => { };
-exports.OPCODE_TEXT = 1;
-exports.OPCODE_PING = 9;
-exports.OPCODE_BINARY = 2;
+const noop = () => { };
+exports.noop = noop;
 exports.APP_PING_CODE = Buffer.from('9');
 exports.PERMESSAGE_DEFLATE = 1;
 exports.SLIDING_DEFLATE_WINDOW = 16;
@@ -36,28 +36,25 @@ function setupNative(group, type, wsServer) {
         }
         const webSocket = exports.native.getUserData(external);
         webSocket.external = external;
-        webSocket.open();
     });
     exports.native[type].group.onPing(group, (message, webSocket) => {
-        webSocket.ping(message);
     });
     exports.native[type].group.onPong(group, (message, webSocket) => {
-        //webSocket.pong(message);
     });
     exports.native[type].group.onMessage(group, (message, webSocket) => {
-        webSocket.message(message);
+        webSocket.onMessageListener(message);
     });
     exports.native[type].group.onDisconnection(group, (newExternal, code, message, webSocket) => {
         webSocket.external = null;
         process.nextTick(() => {
-            webSocket.close(code || 1005, message || '');
+            webSocket.onCloseListener(code || 1005, message || '');
         });
         exports.native.clearUserData(newExternal);
     });
     if (type === 'client') {
         exports.native[type].group.onError(group, (webSocket) => {
             process.nextTick(() => {
-                webSocket.error({
+                webSocket.onErrorListener({
                     message: 'cWs client connection error',
                     stack: 'cWs client connection error'
                 });
@@ -65,4 +62,3 @@ function setupNative(group, type, wsServer) {
         });
     }
 }
-exports.setupNative = setupNative;
