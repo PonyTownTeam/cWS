@@ -2,6 +2,7 @@
 #include "HTTPSocket.h"
 #include <openssl/sha.h>
 #include <string>
+#include <charconv>
 
 namespace cWS {
 
@@ -89,11 +90,10 @@ bool parseURI(std::string &uri, bool &secure, std::string &hostname, int &port, 
         offset++;
         std::string portStr = uri.substr(offset, uri.find('/', offset) - offset);
         if (portStr.length()) {
-            try {
-                port = stoi(portStr);
-            } catch (...) {
-                return false;
-            }
+			auto result = std::from_chars(portStr.data(), portStr.data() + portStr.size(), port);
+			if (result.ec != std::errc{} || result.ptr != portStr.data() + portStr.size()) {
+				return false;
+			}
         } else {
             return false;
         }
