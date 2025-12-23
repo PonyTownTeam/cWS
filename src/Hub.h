@@ -40,17 +40,6 @@ public:
 
     Hub(int extensionOptions = 0, bool useDefaultLoop = false, unsigned int maxPayload = 16777216) : cS::Node(LARGE_BUFFER_SIZE, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_PRE_PADDING, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_POST_PADDING, useDefaultLoop),
                                              Group<SERVER>(extensionOptions, maxPayload, this, nodeData), Group<CLIENT>(0, maxPayload, this, nodeData) {
-#ifdef CWS_THREADSAFE
-        getLoop()->preCbData = nodeData;
-        getLoop()->preCb = [](void *nodeData) {
-            static_cast<cS::NodeData *>(nodeData)->asyncMutex->lock();
-        };
-
-        getLoop()->postCbData = nodeData;
-        getLoop()->postCb = [](void *nodeData) {
-            static_cast<cS::NodeData *>(nodeData)->asyncMutex->unlock();
-        };
-#endif
     }
 
     using cS::Node::run;
