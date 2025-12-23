@@ -8,7 +8,6 @@ namespace cS {
 struct TransferData {
     // Connection state
     uv_os_sock_t fd;
-    SSL *ssl;
 
     // Poll state
     void (*pollCb)(Poll *, int, int);
@@ -30,7 +29,6 @@ protected:
         int shuttingDown : 4;
     } state = {0, false};
 
-    SSL *ssl;
     void *user = nullptr;
     NodeData *nodeData;
 
@@ -88,7 +86,7 @@ protected:
 
     void transfer(NodeData *nodeData, void (*cb)(Poll *)) {
         // userData is invalid from now on till onTransfer
-        setUserData(new TransferData({getFd(), ssl, getCb(), getPoll(), getUserData(), nodeData, cb}));
+        setUserData(new TransferData({getFd(), getCb(), getPoll(), getUserData(), nodeData, cb}));
         stop(this->nodeData->loop);
         close(this->nodeData->loop, [](Poll *p) {
             Socket *s = (Socket *) p;
@@ -138,78 +136,6 @@ protected:
             timer->stop();
             timer->close();
             user = nullptr;
-        }
-    }
-
-    template <class STATE>
-    static void sslIoHandler(Poll *p, int status, int events) {
-        Socket *socket = (Socket *) p;
-
-        if (status < 0) {
-            STATE::onEnd((Socket *) p);
-            return;
-        }
-
-        if (!socket->messageQueue.empty() && ((events & UV_WRITABLE) || SSL_want(socket->ssl) == SSL_READING)) {
-            socket->cork(true);
-            while (true) {
-                Queue::Message *messagePtr = socket->messageQueue.front();
-                int sent = SSL_write(socket->ssl, messagePtr->data, (int) messagePtr->length);
-                if (sent == (ssize_t) messagePtr->length) {
-                    if (messagePtr->callback) {
-                        messagePtr->callback(p, messagePtr->callbackData, false, messagePtr->reserved);
-                    }
-                    socket->messageQueue.pop();
-                    if (socket->messageQueue.empty()) {
-                        if ((socket->state.poll & UV_WRITABLE) && SSL_want(socket->ssl) != SSL_WRITING) {
-                            socket->change(socket->nodeData->loop, socket, socket->setPoll(UV_READABLE));
-                        }
-                        break;
-                    }
-                } else if (sent <= 0) {
-                    switch (SSL_get_error(socket->ssl, sent)) {
-                    case SSL_ERROR_WANT_READ:
-                        break;
-                    case SSL_ERROR_WANT_WRITE:
-                        if ((socket->getPoll() & UV_WRITABLE) == 0) {
-                            socket->change(socket->nodeData->loop, socket, socket->setPoll(socket->getPoll() | UV_WRITABLE));
-                        }
-                        break;
-                    default:
-                        STATE::onEnd((Socket *) p);
-                        return;
-                    }
-                    break;
-                }
-            }
-            socket->cork(false);
-        }
-
-        if (events & UV_READABLE) {
-            do {
-                int length = SSL_read(socket->ssl, socket->nodeData->recvBuffer, socket->nodeData->recvLength);
-                if (length <= 0) {
-                    switch (SSL_get_error(socket->ssl, length)) {
-                    case SSL_ERROR_WANT_READ:
-                        break;
-                    case SSL_ERROR_WANT_WRITE:
-                        if ((socket->getPoll() & UV_WRITABLE) == 0) {
-                            socket->change(socket->nodeData->loop, socket, socket->setPoll(socket->getPoll() | UV_WRITABLE));
-                        }
-                        break;
-                    default:
-                        STATE::onEnd((Socket *) p);
-                        return;
-                    }
-                    break;
-                } else {
-                    // Warning: onData can delete the socket! Happens when HttpSocket upgrades
-                    socket = STATE::onData((Socket *) p, socket->nodeData->recvBuffer, length);
-                    if (socket->isClosed() || socket->isShuttingDown()) {
-                        return;
-                    }
-                }
-            } while (SSL_pending(socket->ssl));
         }
     }
 
@@ -269,11 +195,7 @@ protected:
 
     template<class STATE>
     void setState() {
-        if (ssl) {
-            setCb(sslIoHandler<STATE>);
-        } else {
-            setCb(ioHandler<STATE>);
-        }
+        setCb(ioHandler<STATE>);
     }
 
     bool hasEmptyQueue() {
@@ -304,45 +226,23 @@ protected:
     bool write(Queue::Message *message, bool &wasTransferred) {
         ssize_t sent = 0;
         if (messageQueue.empty()) {
+			sent = ::send(getFd(), message->data, message->length, MSG_NOSIGNAL);
+			if (sent == (ssize_t) message->length) {
+				wasTransferred = false;
+				return true;
+			} else if (sent == SOCKET_ERROR) {
+				if (!nodeData->netContext->wouldBlock()) {
+					return false;
+				}
+			} else {
+				message->length -= sent;
+				message->data += sent;
+			}
 
-            if (ssl) {
-                sent = SSL_write(ssl, message->data, (int) message->length);
-                if (sent == (ssize_t) message->length) {
-                    wasTransferred = false;
-                    return true;
-                } else if (sent < 0) {
-                    switch (SSL_get_error(ssl, (int) sent)) {
-                    case SSL_ERROR_WANT_READ:
-                        break;
-                    case SSL_ERROR_WANT_WRITE:
-                        if ((getPoll() & UV_WRITABLE) == 0) {
-                            setPoll(getPoll() | UV_WRITABLE);
-                            changePoll(this);
-                        }
-                        break;
-                    default:
-                        return false;
-                    }
-                }
-            } else {
-                sent = ::send(getFd(), message->data, message->length, MSG_NOSIGNAL);
-                if (sent == (ssize_t) message->length) {
-                    wasTransferred = false;
-                    return true;
-                } else if (sent == SOCKET_ERROR) {
-                    if (!nodeData->netContext->wouldBlock()) {
-                        return false;
-                    }
-                } else {
-                    message->length -= sent;
-                    message->data += sent;
-                }
-
-                if ((getPoll() & UV_WRITABLE) == 0) {
-                    setPoll(getPoll() | UV_WRITABLE);
-                    changePoll(this);
-                }
-            }
+			if ((getPoll() & UV_WRITABLE) == 0) {
+				setPoll(getPoll() | UV_WRITABLE);
+				changePoll(this);
+			}
         }
         messageQueue.push(message);
         wasTransferred = true;
@@ -411,12 +311,7 @@ protected:
     }
 
 public:
-    Socket(NodeData *nodeData, Loop *loop, uv_os_sock_t fd, SSL *ssl) : Poll(loop, fd), ssl(ssl), nodeData(nodeData) {
-        if (ssl) {
-            // OpenSSL treats SOCKETs as int
-            SSL_set_fd(ssl, (int) fd);
-            SSL_set_mode(ssl, SSL_MODE_RELEASE_BUFFERS);
-        }
+    Socket(NodeData *nodeData, Loop *loop, uv_os_sock_t fd) : Poll(loop, fd), nodeData(nodeData) {
     }
 
     NodeData *getNodeData() {
@@ -460,12 +355,7 @@ public:
     }
 
     void shutdown() {
-        if (ssl) {
-            //todo: poll in/out - have the io_cb recall shutdown if failed
-            SSL_shutdown(ssl);
-        } else {
-            ::shutdown(getFd(), SHUT_WR);
-        }
+        ::shutdown(getFd(), SHUT_WR);
     }
 
     template <class T>
@@ -474,10 +364,6 @@ public:
         Context *netContext = nodeData->netContext;
         stop(nodeData->loop);
         netContext->closeSocket(fd);
-
-        if (ssl) {
-            SSL_free(ssl);
-        }
 
         Poll::close(nodeData->loop, [](Poll *p) {
             delete (T *) p;
@@ -494,12 +380,11 @@ public:
 
 struct ListenSocket : Socket {
 
-    ListenSocket(NodeData *nodeData, Loop *loop, uv_os_sock_t fd, SSL *ssl) : Socket(nodeData, loop, fd, ssl) {
+    ListenSocket(NodeData *nodeData, Loop *loop, uv_os_sock_t fd) : Socket(nodeData, loop, fd) {
 
     }
 
     Timer *timer = nullptr;
-    cS::TLS::Context sslContext;
 };
 
 }

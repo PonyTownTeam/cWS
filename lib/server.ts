@@ -179,13 +179,11 @@ export class WebSocketServer {
       }
     } else {
       const socketAsAny: any = socket as any;
-      const socketHandle: any = socketAsAny.ssl ? socketAsAny._parent._handle : socketAsAny._handle;
+      const socketHandle: any = socketAsAny._handle;
 
       if (socketHandle && secKey && secKey.length === 24) {
-        const sslState: any = socketAsAny.ssl ? native.getSSLContext(socketAsAny.ssl) : null;
-
-        socket.setNoDelay(this.options.noDelay === false ? false : true);
-        const ticket: any = native.transfer(socketHandle.fd === -1 ? socketHandle : socketHandle.fd, sslState);
+        socket.setNoDelay(true);
+        const ticket: any = native.transfer(socketHandle.fd === -1 ? socketHandle : socketHandle.fd);
         socket.on('close', (): void => {
           if (this.serverGroup) {
             this.upgradeCb = cb;

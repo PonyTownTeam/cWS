@@ -1,6 +1,5 @@
 #include "Hub.h"
 #include "HTTPSocket.h"
-#include <openssl/sha.h>
 #include <string>
 #include <charconv>
 
@@ -30,20 +29,20 @@ void Hub::onClientConnection(cS::Socket *s, bool error) {
     }
 }
 
-bool Hub::listen(const char *host, int port, cS::TLS::Context sslContext, int options, Group<SERVER> *eh) {
+bool Hub::listen(const char *host, int port, int options, Group<SERVER> *eh) {
     if (!eh) {
         eh = (Group<SERVER> *) this;
     }
 
-    if (cS::Node::listen<onServerAccept>(host, port, sslContext, options, (cS::NodeData *) eh, nullptr)) {
+    if (cS::Node::listen<onServerAccept>(host, port, options, (cS::NodeData *) eh, nullptr)) {
         eh->errorHandler(port);
         return false;
     }
     return true;
 }
 
-bool Hub::listen(int port, cS::TLS::Context sslContext, int options, Group<SERVER> *eh) {
-    return listen(nullptr, port, sslContext, options, eh);
+bool Hub::listen(int port, int options, Group<SERVER> *eh) {
+    return listen(nullptr, port, options, eh);
 }
 
 cS::Socket *allocateHttpSocket(cS::Socket *s) {
@@ -152,12 +151,12 @@ void Hub::connect(std::string uri, void *user, std::map<std::string, std::string
     }
 }
 
-void Hub::upgrade(uv_os_sock_t fd, const char *secKey, SSL *ssl, const char *extensions, size_t extensionsLength, const char *subprotocol, size_t subprotocolLength, Group<SERVER> *serverGroup) {
+void Hub::upgrade(uv_os_sock_t fd, const char *secKey, const char *extensions, size_t extensionsLength, const char *subprotocol, size_t subprotocolLength, Group<SERVER> *serverGroup) {
     if (!serverGroup) {
         serverGroup = &getDefaultGroup<SERVER>();
     }
 
-    cS::Socket s((cS::NodeData *) serverGroup, serverGroup->loop, fd, ssl);
+    cS::Socket s((cS::NodeData *) serverGroup, serverGroup->loop, fd);
     s.setNoDelay(true);
 
     // todo: skip httpSocket -> it cannot fail anyways!

@@ -1,53 +1,31 @@
 #include <node.h>
 #include <node_buffer.h>
-#include <openssl/bio.h>
-#include <openssl/ssl.h>
 #include <uv.h>
 #include <cstring>
 
-#define HAVE_OPENSSL 1
 #define NODE_WANT_INTERNALS 1
 
 #if NODE_MAJOR_VERSION==18
   #include "headers/18/tcp_wrap.h"
-  #include "headers/18/crypto/crypto_tls.h"
   #include "headers/18/base_object-inl.h"
 #endif
 
 #if NODE_MAJOR_VERSION==20
   #include "headers/20/tcp_wrap.h"
-  #include "headers/20/crypto/crypto_tls.h"
   #include "headers/20/base_object-inl.h"
 #endif
 
 #if NODE_MAJOR_VERSION==22
   #include "headers/22/tcp_wrap.h"
-  #include "headers/22/crypto/crypto_tls.h"
   #include "headers/22/base_object-inl.h"
 #endif
 
 #if NODE_MAJOR_VERSION==24
   #include "headers/24/tcp_wrap.h"
-  #include "headers/24/crypto/crypto_tls.h"
   #include "headers/24/base_object-inl.h"
 #endif
 
 using BaseObject = node::BaseObject;
-
-using TLSWrap = node::crypto::TLSWrap;
-class TLSWrapSSLGetter : public node::crypto::TLSWrap {
-public:
-    void setSSL(const v8::FunctionCallbackInfo<v8::Value> &info){
-        v8::Isolate* isolate = info.GetIsolate();
-        if (!ssl_){
-            info.GetReturnValue().Set(v8::Null(isolate));
-            return;
-        }
-        SSL* ptr = ssl_.get();
-        v8::Local<v8::External> ext = v8::External::New(isolate, ptr);
-        info.GetReturnValue().Set(ext);
-    }
-};
 
 // Fix windows not resolved symbol issue
 #if defined(_MSC_VER)
@@ -271,7 +249,6 @@ void connect(const FunctionCallbackInfo<Value> &args) {
 
 struct Ticket {
   uv_os_sock_t fd;
-  SSL *ssl;
 };
 
 void upgrade(const FunctionCallbackInfo<Value> &args) {
@@ -285,13 +262,9 @@ void upgrade(const FunctionCallbackInfo<Value> &args) {
 
   // todo: move this check into core!
   if (ticket->fd != INVALID_SOCKET) {
-    hub.upgrade(ticket->fd, secKey.getData(), ticket->ssl, extensions.getData(),
+    hub.upgrade(ticket->fd, secKey.getData(), extensions.getData(),
                 extensions.getLength(), subprotocol.getData(),
                 subprotocol.getLength(), serverGroup);
-  } else {
-    if (ticket->ssl) {
-      SSL_free(ticket->ssl);
-    }
   }
   delete ticket;
 }
@@ -313,11 +286,6 @@ void transfer(const FunctionCallbackInfo<Value> &args) {
   }
 
   ticket->fd = dup(ticket->fd);
-  ticket->ssl = nullptr;
-  if (args[1]->IsExternal()) {
-    ticket->ssl = (SSL *)args[1].As<External>()->Value();
-    SSL_up_ref(ticket->ssl);
-  }
 
   // uv_close calls shutdown if not set on Windows
   if (handle) {
@@ -501,25 +469,6 @@ void getSize(const FunctionCallbackInfo<Value> &args) {
   args.GetReturnValue().Set(Integer::New(args.GetIsolate(), groupData->size));
 }
 
-
-void getSSLContext(const FunctionCallbackInfo<Value> &args) {
-    Isolate* isolate = args.GetIsolate();
-    if(args.Length() < 1 || !args[0]->IsObject()){
-
-      isolate->ThrowException(Exception::TypeError(
-        String::NewFromUtf8(isolate, "Error: One object expected").ToLocalChecked()));
-
-      return;
-    }
-
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<Object> obj = args[0]->ToObject(context).ToLocalChecked();
-
-    TLSWrapSSLGetter* tw;
-    ASSIGN_OR_RETURN_UNWRAP(&tw, obj);
-    tw->setSSL(args);
-}
-
 void setNoop(const FunctionCallbackInfo<Value> &args) {
   noop.Reset(args.GetIsolate(), Local<Function>::Cast(args[0]));
 }
@@ -527,7 +476,7 @@ void setNoop(const FunctionCallbackInfo<Value> &args) {
 void listen(const FunctionCallbackInfo<Value> &args) {
   cWS::Group<cWS::SERVER> *group =
       (cWS::Group<cWS::SERVER> *)args[0].As<External>()->Value();
-  hub.listen(args[1].As<Integer>()->Value(), nullptr, 0, group);
+  hub.listen(args[1].As<Integer>()->Value(), 0, group);
 }
 
 template <bool isServer>

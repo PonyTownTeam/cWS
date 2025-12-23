@@ -59,13 +59,7 @@ protected:
             listenSocket->start(listenSocket->nodeData->loop, listenSocket, UV_READABLE);
         }
         do {
-            SSL *ssl = nullptr;
-            if (listenSocket->sslContext) {
-                ssl = SSL_new(listenSocket->sslContext.getNativeContext());
-                SSL_set_accept_state(ssl);
-            }
-
-            Socket *socket = new Socket(listenSocket->nodeData, listenSocket->nodeData->loop, clientFd, ssl);
+            Socket *socket = new Socket(listenSocket->nodeData, listenSocket->nodeData->loop, clientFd);
             socket->setPoll(UV_READABLE);
             A(socket);
         } while ((clientFd = netContext->acceptSocket(serverFd)) != INVALID_SOCKET);
@@ -110,14 +104,7 @@ public:
         ::connect(fd, result->ai_addr, result->ai_addrlen);
         freeaddrinfo(result);
 
-        SSL *ssl = nullptr;
-        if (secure) {
-            ssl = SSL_new(nodeData->clientContext);
-            SSL_set_connect_state(ssl);
-            SSL_set_tlsext_host_name(ssl, hostname);
-        }
-
-        Socket initialSocket(nodeData, getLoop(), fd, ssl);
+        Socket initialSocket(nodeData, getLoop(), fd);
         cS::Socket *socket = I(&initialSocket);
 
         socket->setCb(connect_cb<C>);
@@ -128,7 +115,7 @@ public:
 
     // todo: hostname, backlog
     template <void A(Socket *s)>
-    bool listen(const char *host, int port, cS::TLS::Context sslContext, int options, cS::NodeData *nodeData, void *user) {
+    bool listen(const char *host, int port, int options, cS::NodeData *nodeData, void *user) {
         addrinfo hints, *result;
         memset(&hints, 0, sizeof(addrinfo));
 
@@ -183,8 +170,7 @@ public:
             return true;
         }
 
-        ListenSocket *listenSocket = new ListenSocket(nodeData, loop, listenFd, nullptr);
-        listenSocket->sslContext = sslContext;
+        ListenSocket *listenSocket = new ListenSocket(nodeData, loop, listenFd);
         listenSocket->nodeData = nodeData;
 
         listenSocket->setCb(accept_poll_cb<A>);

@@ -10,7 +10,6 @@ void Initialize(Local<Object> exports) {
   exports->Set(isolate->GetCurrentContext(), String::NewFromUtf8(isolate, "client").ToLocalChecked(),
               Namespace<cWS::CLIENT>(isolate).object);
 
-  NODE_SET_METHOD(exports, "getSSLContext", getSSLContext);
   NODE_SET_METHOD(exports, "setUserData", setUserData<cWS::SERVER>);
   NODE_SET_METHOD(exports, "getUserData", getUserData<cWS::SERVER>);
   NODE_SET_METHOD(exports, "clearUserData", clearUserData<cWS::SERVER>);
