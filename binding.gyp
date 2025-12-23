@@ -18,19 +18,12 @@
                 'src/headers/<!(node -p "process.version.match(/^v(\\d+)/)[1]")'
             ],
             'conditions': [
-                ['OS=="linux"', {
-                    'cflags_cc': ['-std=c++20', '-DUSE_LIBUV'],
-                    'cflags_cc!': ['-fno-exceptions', '-std=gnu++20', '-fno-rtti'],
-                    'cflags!': ['-fno-omit-frame-pointer'],
+                ['OS=="linux" or OS=="freebsd"', {
+                    'cflags_cc': ['-std=c++20', '-DUSE_LIBUV', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
+                    'cflags_cc!': [],
+                    'cflags!': [],
+                    'ldflags': ['-s', '-flto'],
                     'ldflags!': ['-rdynamic'],
-                    'ldflags': ['-s']
-                }],
-                ['OS=="freebsd"', {
-                    'cflags_cc': ['-std=c++20', '-DUSE_LIBUV'],
-                    'cflags_cc!': ['-fno-exceptions', '-std=gnu++20', '-fno-rtti'],
-                    'cflags!': ['-fno-omit-frame-pointer'],
-                    'ldflags!': ['-rdynamic'],
-                    'ldflags': ['-s']
                 }],
                 ['OS=="mac"', {
                     'xcode_settings': {
