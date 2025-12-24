@@ -130,12 +130,6 @@ export class WebSocketServer {
     }
   }
 
-  public broadcast(message: string | Buffer, options?: { binary: boolean }): void {
-    if (this.serverGroup) {
-      native.server.group.broadcast(this.serverGroup, message, options && options.binary || false);
-    }
-  }
-
   public handleUpgrade(req: HTTP.IncomingMessage, socket: Socket, upgradeHead: any, cb: (ws: WebSocket) => void): void {
     // `ws` compatibility
     if (this.options.noServer) {

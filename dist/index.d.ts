@@ -16,6 +16,7 @@ export type ServerConfigs = {
     port?: number;
     host?: string;
     server?: HTTP.Server | HTTPS.Server;
+    noDelay?: boolean;
     noServer?: boolean;
     maxPayload?: number;
     perMessageDeflate?: boolean | {

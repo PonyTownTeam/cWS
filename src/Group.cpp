@@ -186,15 +186,6 @@ void Group<isServer>::onHttpUpgrade(std::function<void(HttpSocket<isServer> *, H
 }
 
 template <bool isServer>
-void Group<isServer>::broadcast(const char *message, size_t length, OpCode opCode) {
-    typename WebSocket<isServer>::PreparedMessage *preparedMessage = WebSocket<isServer>::prepareMessage((char *) message, length, opCode);
-        forEach([preparedMessage](cWS::WebSocket<isServer> *ws) {
-          ws->sendPrepared(preparedMessage);
-        });
-    WebSocket<isServer>::finalizeMessage(preparedMessage);
-}
-
-template <bool isServer>
 void Group<isServer>::terminate() {
     stopListening();
     forEach([](cWS::WebSocket<isServer> *ws) {

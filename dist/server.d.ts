@@ -19,9 +19,6 @@ export declare class WebSocketServer {
     on(event: 'connection', listener: (socket: WebSocket, req: HTTP.IncomingMessage) => void): void;
     on(event: 'connection', listener: (socket: WebSocket) => void): void;
     emit(event: string, ...args: any[]): void;
-    broadcast(message: string | Buffer, options?: {
-        binary: boolean;
-    }): void;
     handleUpgrade(req: HTTP.IncomingMessage, socket: Socket, upgradeHead: any, cb: (ws: WebSocket) => void): void;
     close(cb?: () => void): void;
     private abortConnection;

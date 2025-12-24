@@ -413,16 +413,6 @@ void terminateGroup(const FunctionCallbackInfo<Value> &args) {
 }
 
 template <bool isServer>
-void broadcast(const FunctionCallbackInfo<Value> &args) {
-  cWS::Group<isServer> *group =
-      (cWS::Group<isServer> *)args[0].As<External>()->Value();
-  cWS::OpCode opCode =
-      args[2].As<Boolean>()->Value() ? cWS::OpCode::BINARY : cWS::OpCode::TEXT;
-  NativeString nativeString(args.GetIsolate(), args[1]);
-  group->broadcast(nativeString.getData(), nativeString.getLength(), opCode);
-}
-
-template <bool isServer>
 void prepareMessage(const FunctionCallbackInfo<Value> &args) {
   cWS::OpCode opCode = (cWS::OpCode)args[1].As<Integer>()->Value();
   NativeString nativeString(args.GetIsolate(), args[0]);
@@ -509,7 +499,6 @@ struct Namespace {
     NODE_SET_METHOD(group, "delete", deleteGroup<isServer>);
     NODE_SET_METHOD(group, "close", closeGroup<isServer>);
     NODE_SET_METHOD(group, "terminate", terminateGroup<isServer>);
-    NODE_SET_METHOD(group, "broadcast", broadcast<isServer>);
 
     object->Set(isolate->GetCurrentContext(), String::NewFromUtf8(isolate, "group").ToLocalChecked(), group);
   }

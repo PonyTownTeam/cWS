@@ -180,15 +180,6 @@ wsServer.clients.forEach((ws) => { });
 wsServer.clients.length;
 ```
 
-To send message to all connected clients use `broadcast` method:
-```js
-// broadcast string
-wsServer.broadcast(message);
-
-// broadcast binary
-wsServer.broadcast(message, { binary: true });
-```
-
 To stop server use `close` function:
 ```js
 wsServer.close(() => {

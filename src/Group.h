@@ -74,7 +74,6 @@ public:
     void onHttpUpgrade(std::function<void(HttpSocket<isServer> *, HttpRequest)> handler);
 
     // Thread safe
-    void broadcast(const char *message, size_t length, OpCode opCode);
     void setUserData(void *user);
     void *getUserData();
 

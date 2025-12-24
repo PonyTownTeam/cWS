@@ -94,11 +94,6 @@ class WebSocketServer {
             this.registeredEvents[event](...args);
         }
     }
-    broadcast(message, options) {
-        if (this.serverGroup) {
-            shared_1.native.server.group.broadcast(this.serverGroup, message, options && options.binary || false);
-        }
-    }
     handleUpgrade(req, socket, upgradeHead, cb) {
         if (this.options.noServer) {
             this.upgradeConnection(req, socket, cb);
@@ -135,11 +130,10 @@ class WebSocketServer {
         }
         else {
             const socketAsAny = socket;
-            const socketHandle = socketAsAny.ssl ? socketAsAny._parent._handle : socketAsAny._handle;
+            const socketHandle = socketAsAny._handle;
             if (socketHandle && secKey && secKey.length === 24) {
-                const sslState = socketAsAny.ssl ? shared_1.native.getSSLContext(socketAsAny.ssl) : null;
-                socket.setNoDelay(this.options.noDelay === false ? false : true);
-                const ticket = shared_1.native.transfer(socketHandle.fd === -1 ? socketHandle : socketHandle.fd, sslState);
+                socket.setNoDelay(true);
+                const ticket = shared_1.native.transfer(socketHandle.fd === -1 ? socketHandle : socketHandle.fd);
                 socket.on('close', () => {
                     if (this.serverGroup) {
                         this.upgradeCb = cb;
