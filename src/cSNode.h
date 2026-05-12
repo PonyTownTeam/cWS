@@ -56,11 +56,11 @@ protected:
             listenSocket->timer = nullptr;
 
             listenSocket->setCb(accept_poll_cb<A>);
-            listenSocket->start(listenSocket->nodeData->loop, listenSocket, UV_READABLE);
+            listenSocket->start(listenSocket->nodeData->loop, listenSocket, EVENT_READABLE);
         }
         do {
             Socket *socket = new Socket(listenSocket->nodeData, listenSocket->nodeData->loop, clientFd);
-            socket->setPoll(UV_READABLE);
+            socket->setPoll(EVENT_READABLE);
             A(socket);
         } while ((clientFd = netContext->acceptSocket(serverFd)) != INVALID_SOCKET);
     }
@@ -108,7 +108,7 @@ public:
         cS::Socket *socket = I(&initialSocket);
 
         socket->setCb(connect_cb<C>);
-        socket->start(loop, socket, socket->setPoll(UV_WRITABLE));
+        socket->start(loop, socket, socket->setPoll(EVENT_WRITABLE));
 
         return socket;
     }
@@ -174,7 +174,7 @@ public:
         listenSocket->nodeData = nodeData;
 
         listenSocket->setCb(accept_poll_cb<A>);
-        listenSocket->start(loop, listenSocket, UV_READABLE);
+        listenSocket->start(loop, listenSocket, EVENT_READABLE);
 
         // should be vector of listen data! one group can have many listeners!
         nodeData->user = listenSocket;

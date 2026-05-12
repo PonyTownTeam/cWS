@@ -110,7 +110,7 @@ cS::Socket *HttpSocket<isServer>::onData(cS::Socket *s, char *data, size_t lengt
                             // Warning: changes socket, needs to inform the stack of Poll address change!
                             WebSocket<isServer> *webSocket = new WebSocket<isServer>(perMessageDeflate, httpSocket);
                             webSocket->template setState<WebSocket<isServer>>();
-                            webSocket->change(webSocket->nodeData->loop, webSocket, webSocket->setPoll(UV_READABLE));
+                            webSocket->change(webSocket->nodeData->loop, webSocket, webSocket->setPoll(EVENT_READABLE));
                             Group<isServer>::from(webSocket)->addWebSocket(webSocket);
 
                             webSocket->cork(true);
@@ -162,7 +162,7 @@ cS::Socket *HttpSocket<isServer>::onData(cS::Socket *s, char *data, size_t lengt
                     httpSocket->cancelTimeout();
                     webSocket->setUserData(httpSocket->httpUser);
                     webSocket->template setState<WebSocket<isServer>>();
-                    webSocket->change(webSocket->nodeData->loop, webSocket, webSocket->setPoll(UV_READABLE));
+                    webSocket->change(webSocket->nodeData->loop, webSocket, webSocket->setPoll(EVENT_READABLE));
                     Group<isServer>::from(webSocket)->addWebSocket(webSocket);
 
                     webSocket->cork(true);

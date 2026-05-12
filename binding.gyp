@@ -5,7 +5,6 @@
             "sources": [
                 'src/Addon.h',
                 'src/Addon.cpp',
-                'src/Extensions.cpp',
                 'src/Group.cpp',
                 'src/Networking.cpp',
                 'src/Hub.cpp',
@@ -19,7 +18,7 @@
             ],
             'conditions': [
                 ['OS=="linux" or OS=="freebsd"', {
-                    'cflags_cc': ['-w', '-std=c++20', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
+                    'cflags_cc': ['-w', '-std=c++20', '-DUSE_EPOLL', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
                     'cflags_cc!': [],
                     'cflags!': [],
                     'ldflags': ['-s', '-flto'],

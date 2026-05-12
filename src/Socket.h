@@ -150,8 +150,8 @@ protected:
             return;
         }
 
-        if (events & UV_WRITABLE) {
-            if (!socket->messageQueue.empty() && (events & UV_WRITABLE)) {
+        if (events & EVENT_WRITABLE) {
+            if (!socket->messageQueue.empty() && (events & EVENT_WRITABLE)) {
                 socket->cork(true);
                 while (true) {
                     Queue::Message *messagePtr = socket->messageQueue.front();
@@ -163,7 +163,7 @@ protected:
                         socket->messageQueue.pop();
                         if (socket->messageQueue.empty()) {
                             // todo, remove bit, don't set directly
-                            socket->change(socket->nodeData->loop, socket, socket->setPoll(UV_READABLE));
+                            socket->change(socket->nodeData->loop, socket, socket->setPoll(EVENT_READABLE));
                             break;
                         }
                     } else if (sent == SOCKET_ERROR) {
@@ -182,7 +182,7 @@ protected:
             }
         }
 
-        if (events & UV_READABLE) {
+        if (events & EVENT_READABLE) {
             int length = (int) recv(socket->getFd(), nodeData->recvBuffer, nodeData->recvLength, 0);
             if (length > 0) {
                 STATE::onData((Socket *) p, nodeData->recvBuffer, length);
@@ -239,8 +239,8 @@ protected:
 				message->data += sent;
 			}
 
-			if ((getPoll() & UV_WRITABLE) == 0) {
-				setPoll(getPoll() | UV_WRITABLE);
+			if ((getPoll() & EVENT_WRITABLE) == 0) {
+				setPoll(getPoll() | EVENT_WRITABLE);
 				changePoll(this);
 			}
         }
