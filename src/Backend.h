@@ -1,7 +1,7 @@
 #ifndef BACKEND_H
 #define BACKEND_H
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(USE_LIBUV)
 	#ifndef USE_EPOLL
 		#define USE_EPOLL
 	#endif
