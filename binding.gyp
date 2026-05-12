@@ -3,15 +3,7 @@
         {
             "target_name": "cws",
             "sources": [
-                'src/Addon.h',
-                'src/Addon.cpp',
-                'src/Group.cpp',
-                'src/Networking.cpp',
-                'src/Hub.cpp',
-                'src/cSNode.cpp',
-                'src/WebSocket.cpp',
-                'src/HTTPSocket.cpp',
-                'src/Socket.cpp'
+    			"<!@(node -e \"const fs=require('fs');for(const f of fs.readdirSync('src')) if(f.endsWith('.cpp')) process.stdout.write('src/'+f+'\\n')\")"
             ],
             "include_dirs": [
                 'src/headers/<!(node -p "process.version.match(/^v(\\d+)/)[1]")'
