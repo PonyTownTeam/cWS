@@ -102,8 +102,6 @@ Group<isServer>::Group(int extensionOptions, unsigned int maxPayload, Hub *hub, 
     httpDisconnectionHandler = [](HttpSocket<isServer> *) {};
     httpCancelledRequestHandler = [](HttpResponse *) {};
     httpDataHandler = [](HttpResponse *, char *, size_t, size_t) {};
-
-    this->extensionOptions |= CLIENT_NO_CONTEXT_TAKEOVER | SERVER_NO_CONTEXT_TAKEOVER;
 }
 
 template <bool isServer>

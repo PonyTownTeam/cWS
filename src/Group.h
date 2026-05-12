@@ -3,7 +3,6 @@
 
 #include "WebSocket.h"
 #include "HTTPSocket.h"
-#include "Extensions.h"
 #include <functional>
 #include <stack>
 

@@ -1,6 +1,5 @@
 #include "HTTPSocket.h"
 #include "Group.h"
-#include "Extensions.h"
 #include <cstdio>
 
 #define MAX_HEADERS 100
@@ -207,16 +206,6 @@ void HttpSocket<isServer>::upgrade(const char *secKey, const char *extensions, s
 
     if (isServer) {
         *perMessageDeflate = false;
-        std::string extensionsResponse;
-        if (extensionsLength) {
-            Group<isServer> *group = Group<isServer>::from(this);
-            ExtensionsNegotiator<cWS::SERVER> extensionsNegotiator(group->extensionOptions);
-            extensionsNegotiator.readOffer(std::string(extensions, extensionsLength));
-            extensionsResponse = extensionsNegotiator.generateOffer();
-            if (extensionsNegotiator.getNegotiatedOptions() & PERMESSAGE_DEFLATE) {
-                *perMessageDeflate = true;
-            }
-        }
 
         unsigned char shaInput[] = "XXXXXXXXXXXXXXXXXXXXXXXX258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         memcpy(shaInput, secKey, 24);
@@ -228,12 +217,6 @@ void HttpSocket<isServer>::upgrade(const char *secKey, const char *extensions, s
         base64(shaDigest, upgradeBuffer + 97);
         memcpy(upgradeBuffer + 125, "\r\n", 2);
         size_t upgradeResponseLength = 127;
-        if (extensionsResponse.length() && extensionsResponse.length() < 200) {
-            memcpy(upgradeBuffer + upgradeResponseLength, "Sec-WebSocket-Extensions: ", 26);
-            memcpy(upgradeBuffer + upgradeResponseLength + 26, extensionsResponse.data(), extensionsResponse.length());
-            memcpy(upgradeBuffer + upgradeResponseLength + 26 + extensionsResponse.length(), "\r\n", 2);
-            upgradeResponseLength += 26 + extensionsResponse.length() + 2;
-        }
         // select first protocol
         for (unsigned int i = 0; i < subprotocolLength; i++) {
             if (subprotocol[i] == ',') {
