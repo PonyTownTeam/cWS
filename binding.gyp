@@ -19,7 +19,7 @@
             ],
             'conditions': [
                 ['OS=="linux" or OS=="freebsd"', {
-                    'cflags_cc': ['-w', '-std=c++20', '-DUSE_LIBUV', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
+                    'cflags_cc': ['-w', '-std=c++20', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
                     'cflags_cc!': [],
                     'cflags!': [],
                     'ldflags': ['-s', '-flto'],
@@ -36,11 +36,9 @@
                         'GCC_OPTIMIZATION_LEVEL': '3',
                         'GCC_ENABLE_CPP_RTTI': 'YES',
                         'OTHER_CFLAGS!': ['-fno-strict-aliasing'],
-                        'OTHER_CPLUSPLUSFLAGS': ['-DUSE_LIBUV']
                     }
                 }],
                 ['OS=="win"', {
-                    'cflags_cc': ['/DUSE_LIBUV'],
                     'cflags_cc!': []
                 }]
             ]
