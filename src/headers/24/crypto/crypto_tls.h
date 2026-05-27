@@ -43,6 +43,11 @@ class TLSWrap : public AsyncWrap,
                 public StreamBase,
                 public StreamListener {
  public:
+  enum InternalFields {
+    kInternalFieldCount = std::max<uint32_t>(AsyncWrap::kInternalFieldCount,
+                                             StreamBase::kInternalFieldCount),
+  };
+
   enum class Kind {
     kClient,
     kServer
@@ -107,7 +112,7 @@ class TLSWrap : public AsyncWrap,
 
   std::string diagnostic_name() const override;
 
- protected:
+ private:
   // OpenSSL structures are opaque. Estimate SSL memory size for OpenSSL 1.1.1b:
   //   SSL: 6224
   //   SSL->SSL3_STATE: 1040

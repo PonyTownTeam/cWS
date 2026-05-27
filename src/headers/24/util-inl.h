@@ -22,6 +22,7 @@
 #ifndef SRC_UTIL_INL_H_
 #define SRC_UTIL_INL_H_
 
+#include "v8-isolate.h"
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include <cmath>
@@ -357,6 +358,26 @@ v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
 }
 
 v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
+                                    std::u16string_view str,
+                                    v8::Isolate* isolate) {
+  if (isolate == nullptr) isolate = context->GetIsolate();
+  if (str.length() >= static_cast<size_t>(v8::String::kMaxLength))
+      [[unlikely]] {
+    // V8 only has a TODO comment about adding an exception when the maximum
+    // string size is exceeded.
+    ThrowErrStringTooLong(isolate);
+    return v8::MaybeLocal<v8::Value>();
+  }
+
+  return v8::String::NewFromTwoByte(
+             isolate,
+             reinterpret_cast<const uint16_t*>(str.data()),
+             v8::NewStringType::kNormal,
+             str.length())
+      .FromMaybe(v8::Local<v8::String>());
+}
+
+v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
                                     v8_inspector::StringView str,
                                     v8::Isolate* isolate) {
   if (isolate == nullptr) isolate = context->GetIsolate();
@@ -570,7 +591,9 @@ void ArrayBufferViewContents<T, S>::Read(v8::Local<v8::ArrayBufferView> abv) {
   static_assert(sizeof(T) == 1, "Only supports one-byte data at the moment");
   length_ = abv->ByteLength();
   if (length_ > sizeof(stack_storage_) || abv->HasBuffer()) {
-    data_ = static_cast<T*>(abv->Buffer()->Data()) + abv->ByteOffset();
+    auto buf_data = abv->Buffer()->Data();
+    data_ = buf_data != nullptr ? static_cast<T*>(buf_data) + abv->ByteOffset()
+                                : stack_storage_;
   } else {
     abv->CopyContents(stack_storage_, sizeof(stack_storage_));
     data_ = stack_storage_;
@@ -658,10 +681,15 @@ T FromV8Value(v8::Local<v8::Value> value) {
         "Type is out of unsigned integer range");
     if constexpr (!loose) {
       CHECK(value->IsUint32());
+      return static_cast<T>(value.As<v8::Uint32>()->Value());
     } else {
       CHECK(value->IsNumber());
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      v8::Local<v8::Context> context = isolate->GetCurrentContext();
+      v8::Maybe<uint32_t> maybe = value->Uint32Value(context);
+      CHECK(!maybe.IsNothing());
+      return static_cast<T>(maybe.FromJust());
     }
-    return static_cast<T>(value.As<v8::Uint32>()->Value());
   } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
     static_assert(
         std::numeric_limits<T>::max() <= std::numeric_limits<int32_t>::max() &&
@@ -698,12 +726,11 @@ inline bool IsWindowsBatchFile(const char* filename) {
   return !extension.empty() && (extension == "cmd" || extension == "bat");
 }
 
-inline std::wstring ConvertToWideString(const std::string& str,
-                                        UINT code_page) {
+inline std::wstring ConvertUTF8ToWideString(const std::string& str) {
   int size_needed = MultiByteToWideChar(
-      code_page, 0, &str[0], static_cast<int>(str.size()), nullptr, 0);
+      CP_UTF8, 0, &str[0], static_cast<int>(str.size()), nullptr, 0);
   std::wstring wstrTo(size_needed, 0);
-  MultiByteToWideChar(code_page,
+  MultiByteToWideChar(CP_UTF8,
                       0,
                       &str[0],
                       static_cast<int>(str.size()),
@@ -711,6 +738,59 @@ inline std::wstring ConvertToWideString(const std::string& str,
                       size_needed);
   return wstrTo;
 }
+
+std::string ConvertWideStringToUTF8(const std::wstring& wstr) {
+  if (wstr.empty()) return std::string();
+
+  int size_needed = WideCharToMultiByte(CP_UTF8,
+                                        0,
+                                        &wstr[0],
+                                        static_cast<int>(wstr.size()),
+                                        nullptr,
+                                        0,
+                                        nullptr,
+                                        nullptr);
+  std::string strTo(size_needed, 0);
+  WideCharToMultiByte(CP_UTF8,
+                      0,
+                      &wstr[0],
+                      static_cast<int>(wstr.size()),
+                      &strTo[0],
+                      size_needed,
+                      nullptr,
+                      nullptr);
+  return strTo;
+}
+
+template <typename T, size_t kStackStorageSize>
+std::filesystem::path MaybeStackBuffer<T, kStackStorageSize>::ToPath() const {
+  std::wstring wide_path = ConvertUTF8ToWideString(ToString());
+  return std::filesystem::path(wide_path);
+}
+
+std::string ConvertPathToUTF8(const std::filesystem::path& path) {
+  return ConvertWideStringToUTF8(path.wstring());
+}
+
+std::string ConvertGenericPathToUTF8(const std::filesystem::path& path) {
+  return ConvertWideStringToUTF8(path.generic_wstring());
+}
+
+#else  // _WIN32
+
+template <typename T, size_t kStackStorageSize>
+std::filesystem::path MaybeStackBuffer<T, kStackStorageSize>::ToPath() const {
+  return std::filesystem::path(ToStringView());
+}
+
+std::string ConvertPathToUTF8(const std::filesystem::path& path) {
+  return path.native();
+}
+
+std::string ConvertGenericPathToUTF8(const std::filesystem::path& path) {
+  return path.generic_string();
+}
+
 #endif  // _WIN32
 
 inline v8::MaybeLocal<v8::Object> NewDictionaryInstance(

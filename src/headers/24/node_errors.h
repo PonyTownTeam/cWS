@@ -51,8 +51,8 @@ void OOMErrorHandler(const char* location, const v8::OOMDetails& details);
   V(ERR_CPU_PROFILE_NOT_STARTED, Error)                                        \
   V(ERR_CPU_PROFILE_TOO_MANY, Error)                                           \
   V(ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED, Error)                             \
+  V(ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS, Error)                                \
   V(ERR_CRYPTO_INITIALIZATION_FAILED, Error)                                   \
-  V(ERR_CRYPTO_INVALID_ARGON2_PARAMS, TypeError)                               \
   V(ERR_CRYPTO_INVALID_AUTH_TAG, TypeError)                                    \
   V(ERR_CRYPTO_INVALID_COUNTER, TypeError)                                     \
   V(ERR_CRYPTO_INVALID_CURVE, TypeError)                                       \
@@ -106,7 +106,7 @@ void OOMErrorHandler(const char* location, const v8::OOMDetails& details);
   V(ERR_INVALID_URL_PATTERN, TypeError)                                        \
   V(ERR_INVALID_URL_SCHEME, TypeError)                                         \
   V(ERR_LOAD_SQLITE_EXTENSION, Error)                                          \
-  V(ERR_MEMORY_ALLOCATION_FAILED, Error)                                       \
+  V(ERR_MEMORY_ALLOCATION_FAILED, RangeError)                                  \
   V(ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE, Error)                             \
   V(ERR_MISSING_ARGS, TypeError)                                               \
   V(ERR_MISSING_PASSPHRASE, TypeError)                                         \
@@ -191,8 +191,9 @@ ERRORS_WITH_CODE(V)
   V(ERR_CLOSED_MESSAGE_PORT, "Cannot send data on closed MessagePort")         \
   V(ERR_CONSTRUCT_CALL_INVALID, "Constructor cannot be called")                \
   V(ERR_CONSTRUCT_CALL_REQUIRED, "Cannot call constructor without `new`")      \
+  V(ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS,                                       \
+    "The selected key encoding is incompatible with the key type")             \
   V(ERR_CRYPTO_INITIALIZATION_FAILED, "Initialization failed")                 \
-  V(ERR_CRYPTO_INVALID_ARGON2_PARAMS, "Invalid Argon2 params")                 \
   V(ERR_CRYPTO_INVALID_AUTH_TAG, "Invalid authentication tag")                 \
   V(ERR_CRYPTO_INVALID_COUNTER, "Invalid counter")                             \
   V(ERR_CRYPTO_INVALID_CURVE, "Invalid EC curve name")                         \
@@ -295,12 +296,11 @@ inline v8::Local<v8::Object> ERR_BUFFER_TOO_LARGE(v8::Isolate* isolate) {
 }
 
 inline void THROW_ERR_SOURCE_PHASE_NOT_DEFINED(v8::Isolate* isolate,
-                                               v8::Local<v8::String> url) {
-  std::string message = std::string(*v8::String::Utf8Value(isolate, url));
+                                               const std::string& url) {
   return THROW_ERR_SOURCE_PHASE_NOT_DEFINED(
       isolate,
-      "Source phase import object is not defined for module %s",
-      message.c_str());
+      "Source phase import object is not defined for module '%s'",
+      url);
 }
 
 inline v8::Local<v8::Object> ERR_STRING_TOO_LONG(v8::Isolate* isolate) {
@@ -329,7 +329,7 @@ namespace errors {
 
 class TryCatchScope : public v8::TryCatch {
  public:
-  enum class CatchMode { kNormal, kFatal };
+  enum class CatchMode { kNormal, kFatal, kFatalRethrowStackOverflow };
 
   explicit TryCatchScope(Environment* env, CatchMode mode = CatchMode::kNormal)
       : v8::TryCatch(env->isolate()), env_(env), mode_(mode) {}

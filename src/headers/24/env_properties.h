@@ -21,6 +21,7 @@
   V(arrow_message_private_symbol, "node:arrowMessage")                         \
   V(contextify_context_private_symbol, "node:contextify:context")              \
   V(decorated_private_symbol, "node:decorated")                                \
+  V(empty_context_frame_sentinel_symbol, "node:empty_context_frame_sentinel")  \
   V(transfer_mode_private_symbol, "node:transfer_mode")                        \
   V(host_defined_option_symbol, "node:host_defined_option_symbol")             \
   V(js_transferable_wrapper_private_symbol, "node:js_transferable_wrapper")    \
@@ -57,6 +58,7 @@
   V(onpskexchange_symbol, "onpskexchange")                                     \
   V(resource_symbol, "resource_symbol")                                        \
   V(trigger_async_id_symbol, "trigger_async_id_symbol")                        \
+  V(builtin_source_text_module_hdo, "builtin_source_text_module_hdo")          \
   V(source_text_module_default_hdo, "source_text_module_default_hdo")          \
   V(vm_context_no_contextify, "vm_context_no_contextify")                      \
   V(vm_dynamic_import_default_internal, "vm_dynamic_import_default_internal")  \
@@ -92,7 +94,6 @@
   V(change_string, "change")                                                   \
   V(changes_string, "changes")                                                 \
   V(chunks_sent_since_last_write_string, "chunksSentSinceLastWrite")           \
-  V(client_id_string, "clientId")                                              \
   V(clone_unsupported_type_str, "Cannot clone object of unsupported type.")    \
   V(clone_transfer_needed_str,                                                 \
     "Object that needs transfer was found in message but not listed in "       \
@@ -131,6 +132,7 @@
   V(cwd_string, "cwd")                                                         \
   V(data_string, "data")                                                       \
   V(default_is_true_string, "defaultIsTrue")                                   \
+  V(defensive_string, "defensive")                                             \
   V(deserialize_info_string, "deserializeInfo")                                \
   V(dest_string, "dest")                                                       \
   V(destroyed_string, "destroyed")                                             \
@@ -165,6 +167,7 @@
   V(errstr_string, "errstr")                                                   \
   V(events_waiting, "eventsWaiting")                                           \
   V(events, "events")                                                          \
+  V(exclusive_string, "exclusive")                                             \
   V(exponent_string, "exponent")                                               \
   V(exports_string, "exports")                                                 \
   V(external_stream_string, "_externalStream")                                 \
@@ -191,7 +194,6 @@
   V(h2_string, "h2")                                                           \
   V(handle_string, "handle")                                                   \
   V(hash_algorithm_string, "hashAlgorithm")                                    \
-  V(held_string, "held")                                                       \
   V(help_text_string, "helpText")                                              \
   V(homedir_string, "homedir")                                                 \
   V(host_string, "host")                                                       \
@@ -235,6 +237,7 @@
   V(kind_string, "kind")                                                       \
   V(last_insert_rowid_string, "lastInsertRowid")                               \
   V(length_string, "length")                                                   \
+  V(limits_string, "limits")                                                   \
   V(library_string, "library")                                                 \
   V(loop_count, "loopCount")                                                   \
   V(max_buffer_string, "maxBuffer")                                            \
@@ -244,7 +247,6 @@
   V(message_string, "message")                                                 \
   V(messageerror_string, "messageerror")                                       \
   V(mgf1_hash_algorithm_string, "mgf1HashAlgorithm")                           \
-  V(mode_string, "mode")                                                       \
   V(module_string, "module")                                                   \
   V(modulus_length_string, "modulusLength")                                    \
   V(name_string, "name")                                                       \
@@ -285,7 +287,6 @@
   V(path_string, "path")                                                       \
   V(pathname_string, "pathname")                                               \
   V(pending_handle_string, "pendingHandle")                                    \
-  V(pending_string, "pending")                                                 \
   V(permission_string, "permission")                                           \
   V(phase_string, "phase")                                                     \
   V(pid_string, "pid")                                                         \
@@ -325,6 +326,7 @@
   V(servername_string, "servername")                                           \
   V(session_id_string, "sessionId")                                            \
   V(set_string, "set")                                                         \
+  V(shared_string, "shared")                                                   \
   V(shell_string, "shell")                                                     \
   V(signal_string, "signal")                                                   \
   V(sink_string, "sink")                                                       \
@@ -417,6 +419,8 @@
   V(js_transferable_constructor_template, v8::FunctionTemplate)                \
   V(libuv_stream_wrap_ctor_template, v8::FunctionTemplate)                     \
   V(lock_holder_constructor_template, v8::FunctionTemplate)                    \
+  V(lock_info_template, v8::DictionaryTemplate)                                \
+  V(lock_query_template, v8::DictionaryTemplate)                               \
   V(message_port_constructor_template, v8::FunctionTemplate)                   \
   V(module_wrap_constructor_template, v8::FunctionTemplate)                    \
   V(mx_record_template, v8::DictionaryTemplate)                                \
@@ -431,6 +435,8 @@
   V(socketaddress_constructor_template, v8::FunctionTemplate)                  \
   V(space_stats_template, v8::DictionaryTemplate)                              \
   V(sqlite_column_template, v8::DictionaryTemplate)                            \
+  V(sqlite_limits_template, v8::ObjectTemplate)                                \
+  V(sqlite_run_result_template, v8::DictionaryTemplate)                        \
   V(sqlite_statement_sync_constructor_template, v8::FunctionTemplate)          \
   V(sqlite_statement_sync_iterator_constructor_template, v8::FunctionTemplate) \
   V(sqlite_session_constructor_template, v8::FunctionTemplate)                 \
