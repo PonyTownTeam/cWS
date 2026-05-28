@@ -10,7 +10,7 @@
             ],
             'conditions': [
                 ['OS=="linux" or OS=="freebsd"', {
-                    'cflags_cc': ['-w', '-std=c++20', '-DUSE_LIBUV', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
+                    'cflags_cc': ['-w', '-std=c++20', '-DUSE_LIBUV', '-DHAVE_SQLITE=0', '-DHAVE_AMARO=0', '-fno-exceptions', '-std=gnu++20', '-fno-rtti', '-Ofast', '-march=native', '-mtune=native', '-fomit-frame-pointer', '-ffast-math', '-fno-math-errno', '-funsafe-math-optimizations', '-flto'],
                     'cflags_cc!': [],
                     'cflags!': [],
                     'ldflags': ['-s', '-flto'],
