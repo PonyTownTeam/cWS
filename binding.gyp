@@ -26,7 +26,7 @@
                         'GCC_THREADSAFE_STATICS': 'YES',
                         'GCC_OPTIMIZATION_LEVEL': '3',
                         'GCC_ENABLE_CPP_RTTI': 'YES',
-                        'OTHER_CFLAGS!': ['-fno-strict-aliasing'],
+                        'OTHER_CFLAGS': ['-DHAVE_SQLITE=0', '-DHAVE_AMARO=0', '-fno-strict-aliasing'],
                     }
                 }],
                 ['OS=="win"', {
