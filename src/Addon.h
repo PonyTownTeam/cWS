@@ -3,26 +3,20 @@
 #include <uv.h>
 #include <cstring>
 
+#define HAVE_AMARO 1
+#define HAVE_FFI 1
+#define HAVE_SQLITE 1
+
 #define NODE_WANT_INTERNALS 1
-
-#if NODE_MAJOR_VERSION==18
-  #include "headers/18/tcp_wrap.h"
-  #include "headers/18/base_object-inl.h"
-#endif
-
-#if NODE_MAJOR_VERSION==20
-  #include "headers/20/tcp_wrap.h"
-  #include "headers/20/base_object-inl.h"
-#endif
-
-#if NODE_MAJOR_VERSION==22
-  #include "headers/22/tcp_wrap.h"
-  #include "headers/22/base_object-inl.h"
-#endif
 
 #if NODE_MAJOR_VERSION==24
   #include "headers/24/tcp_wrap.h"
   #include "headers/24/base_object-inl.h"
+#endif
+
+#if NODE_MAJOR_VERSION==26
+  #include "headers/26/tcp_wrap.h"
+  #include "headers/26/base_object-inl.h"
 #endif
 
 using BaseObject = node::BaseObject;
@@ -56,7 +50,7 @@ void registerCheck(Isolate *isolate) {
     Isolate *isolate = (Isolate *)check->data;
     HandleScope hs(isolate);
     node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
-                       Local<Function>::New(isolate, noop), 0, nullptr);
+                       Local<Function>::New(isolate, noop), 0, nullptr, node::async_context{0, 0});
   });
   uv_unref((uv_handle_t *)&check);
 }
@@ -212,7 +206,7 @@ void sendCallback(cWS::WebSocket<isServer> *webSocket, void *data,
     HandleScope hs(sc->isolate);
     node::MakeCallback(sc->isolate, sc->isolate->GetCurrentContext()->Global(),
                        Local<Function>::New(sc->isolate, sc->jsCallback), 0,
-                       nullptr);
+                       nullptr, node::async_context{0, 0});
   }
   sc->jsCallback.Reset();
   delete sc;
@@ -278,7 +272,11 @@ void transfer(const FunctionCallbackInfo<Value> &args) {
     Local<Context> context = isolate->GetCurrentContext();
     Local<Object> arg0 = args[0]->ToObject(context).ToLocalChecked();
     int index = arg0->InternalFieldCount() >= 4 ? 1 : 0;
+#if NODE_MAJOR_VERSION >= 26
+    auto wrap = (node::TCPWrap *)arg0->GetAlignedPointerFromInternalField(index, kEmbedderDataTypeTagDefault);
+#else
     auto wrap = (node::TCPWrap *)arg0->GetAlignedPointerFromInternalField(index);
+#endif
     handle = wrap->GetHandle();
     uv_fileno(handle, (uv_os_fd_t *)&ticket->fd);
   } else {
@@ -313,7 +311,7 @@ void onConnection(const FunctionCallbackInfo<Value> &args) {
         Local<Value> argv[] = {wrapSocket(webSocket, isolate)};
         node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
                            Local<Function>::New(isolate, *connectionCallback),
-                           1, argv);
+                           1, argv, node::async_context{0, 0});
       });
 }
 
@@ -360,7 +358,7 @@ void onDisconnection(const FunctionCallbackInfo<Value> &args) {
         getDataV8(webSocket, isolate)};
     node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
                        Local<Function>::New(isolate, *disconnectionCallback), 4,
-                       argv);
+                       argv, node::async_context{0, 0});
   });
 }
 
@@ -378,7 +376,7 @@ void onError(const FunctionCallbackInfo<Value> &args) {
     Local<Value> argv[] = {
         Local<Value>::New(isolate, *(Persistent<Value> *)user)};
     node::MakeCallback(isolate, isolate->GetCurrentContext()->Global(),
-                       Local<Function>::New(isolate, *errorCallback), 1, argv);
+                       Local<Function>::New(isolate, *errorCallback), 1, argv, node::async_context{0, 0});
 
     ((Persistent<Value> *)user)->Reset();
     delete (Persistent<Value> *)user;

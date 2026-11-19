@@ -3,7 +3,7 @@
 #include "Addon.h"
 
 void Initialize(Local<Object> exports) {
-  Isolate *isolate = exports->GetIsolate();
+  Isolate *isolate = Isolate::GetCurrent();
 
   exports->Set(isolate->GetCurrentContext(), String::NewFromUtf8(isolate, "server").ToLocalChecked(),
               Namespace<cWS::SERVER>(isolate).object);
